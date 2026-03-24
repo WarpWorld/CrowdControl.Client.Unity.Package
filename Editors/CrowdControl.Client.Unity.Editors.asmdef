@@ -1,0 +1,12 @@
+{
+    "name": "CrowdControl.Client.Unity.Editors",
+    "references": [ "CrowdControl.Client.Unity" ],
+    "precompiledReferences": [
+        "CrowdControl.Common.dll",
+        "CrowdControl.Extensions.dll",
+        "CrowdControl.Client.WebSocket.dll"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false,
+    "allowUnsafeCode": true
+}
