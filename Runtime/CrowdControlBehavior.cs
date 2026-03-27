@@ -1,3 +1,4 @@
+using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
 using System;
@@ -149,9 +150,85 @@ namespace CrowdControl.Client.Unity
             m_crowdControl.EffectResponseSent += OnEffectResponseSent;
             m_crowdControl.EffectReportSent += OnEffectReportSent;
 
+            m_crowdControl.AuthCodeReceived += OnAuthCodeReceived;
+            m_crowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
+            m_crowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
+
             if (m_crowdControl == null) return;
             m_crowdControl.Connect();
             m_crowdControl.GetAuthCode();
+        }
+
+        /// <summary>UnityEvent invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        /// ReSharper disable once UnassignedField.Global
+        public UnityEvent<ApplicationAuthCode>? AuthCodeReceivedEvent;
+
+        /// <summary>Event invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceivedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action<ApplicationAuthCode>? AuthCodeReceived;
+
+        private void OnAuthCodeReceived(ApplicationAuthCode authCode)
+        {
+            Debug.Log($"Authentication code received: {authCode.Code}, URL: {authCode.Url}");
+            m_synchronizationContext?.Post(_ =>
+            {
+                AuthCodeReceived.InvokeSafe(authCode);
+                AuthCodeReceivedEvent?.Invoke(authCode);
+            }, null);
+        }
+
+        /// <summary>UnityEvent invoked whenever an authentication code redemption result is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeRedeemedReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        public UnityEvent<ApplicationAuthCodeRedeemed>? AuthCodeRedeemedReceivedEvent;
+
+        /// <summary>Event invoked whenever an authentication code redemption result is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeRedeemedReceivedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action<ApplicationAuthCodeRedeemed>? AuthCodeRedeemedReceived;
+
+        private void OnAuthCodeRedeemedReceived(ApplicationAuthCodeRedeemed authCodeRedeemed)
+        {
+            Debug.Log($"Authentication code redeemed: {authCodeRedeemed.Code}");
+            m_synchronizationContext?.Post(_ =>
+            {
+                AuthCodeRedeemedReceived.InvokeSafe(authCodeRedeemed);
+                AuthCodeRedeemedReceivedEvent?.Invoke(authCodeRedeemed);
+            }, null);
+        }
+
+        /// <summary>UnityEvent invoked whenever an authentication code error is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeErrorReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        public UnityEvent<ApplicationAuthCodeError>? AuthCodeErrorReceivedEvent;
+
+        /// <summary>Event invoked whenever an authentication code error is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeErrorReceivedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action<ApplicationAuthCodeError>? AuthCodeErrorReceived;
+
+        private void OnAuthCodeErrorReceived(ApplicationAuthCodeError authCodeError)
+        {
+            Debug.LogError($"Authentication code error received: {authCodeError.Message}");
+            m_synchronizationContext?.Post(_ =>
+            {
+                AuthCodeErrorReceived.InvokeSafe(authCodeError);
+                AuthCodeErrorReceivedEvent?.Invoke(authCodeError);
+            }, null);
         }
 
         /// <summary>UnityEvent invoked whenever an effect request is received from the Crowd Control service. This can be used to trigger in-game responses to effect requests.</summary>
