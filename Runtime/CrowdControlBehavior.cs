@@ -105,6 +105,31 @@ namespace CrowdControl.Client.Unity
 
         void Awake()
         {
+            Log.FileOutput = false;
+            Log.ConsoleOutput = false;
+            Log.OnMessage += (message, level) =>
+            {
+                switch (level)
+                {
+                    case LogLevel.Warning:
+                        Debug.LogWarning(message);
+                        break;
+                    case LogLevel.Error:
+                    case LogLevel.Exception:
+                        Debug.LogError(message);
+                        break;
+                    case LogLevel.Message:
+                        Debug.Log(message);
+                        break;
+                    case LogLevel.Debug:
+                        Debug.Log($"[Debug] {message}");
+                        break;
+                    case LogLevel.Effect:
+                        Debug.Log($"[Effect] {message}");
+                        break;
+                }
+            };
+
             m_synchronizationContext = SynchronizationContext.Current;
             foreach (IMetadata metadata in MetadataLoader?.Metadata.Values ?? Array.Empty<UnityMetadataBase>())
             {
