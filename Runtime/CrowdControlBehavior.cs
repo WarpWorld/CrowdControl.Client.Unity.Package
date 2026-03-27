@@ -178,17 +178,42 @@ namespace CrowdControl.Client.Unity
             m_crowdControl.AuthCodeReceived += OnAuthCodeReceived;
             m_crowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
             m_crowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
+            m_crowdControl.SessionReady += OnSessionReady;
 
             if (m_crowdControl == null) return;
             m_crowdControl.Connect();
             m_crowdControl.GetAuthCode();
         }
 
+        /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        public UnityEvent? SessionReadyEvent;
+
+        /// <summary>Event invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="SessionReadyEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action? SessionReady;
+
+        private void OnSessionReady()
+        {
+            Debug.Log("Crowd Control session is ready.");
+            m_synchronizationContext?.Post(_ =>
+            {
+                SessionReady.InvokeSafe();
+                SessionReadyEvent?.Invoke();
+            }, null);
+        }
+
         /// <summary>UnityEvent invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
         /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
-        /// ReSharper disable once UnassignedField.Global
+        // ReSharper disable once UnassignedField.Global
         public UnityEvent<ApplicationAuthCode>? AuthCodeReceivedEvent;
 
         /// <summary>Event invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
