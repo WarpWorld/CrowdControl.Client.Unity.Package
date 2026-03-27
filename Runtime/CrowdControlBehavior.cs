@@ -105,10 +105,12 @@ namespace CrowdControl.Client.Unity
 
         void Awake()
         {
+            Debug.Log("Rerouting Crowd Control logs to Unity console...");
             Log.FileOutput = false;
             Log.ConsoleOutput = false;
             Log.OnMessage += (message, level) =>
             {
+                Debug.Log("Message received");
                 switch (level)
                 {
                     case LogLevel.Warning:
