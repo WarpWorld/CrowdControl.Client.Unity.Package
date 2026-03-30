@@ -110,7 +110,6 @@ namespace CrowdControl.Client.Unity
             Log.ConsoleOutput = false;
             Log.OnMessage += (message, level) =>
             {
-                Debug.Log("Message received");
                 switch (level)
                 {
                     case LogLevel.Warning:
