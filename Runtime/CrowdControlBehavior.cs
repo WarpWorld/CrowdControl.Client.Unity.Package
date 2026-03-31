@@ -161,6 +161,27 @@ namespace CrowdControl.Client.Unity
 
             if (autoConnect) Connect();
         }
+
+
+        /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
+        void Stop()
+        {
+            if (m_crowdControl == null) return;
+
+            m_crowdControl.EffectRequestReceived -= OnEffectRequestReceived;
+            m_crowdControl.EffectResponseSent -= OnEffectResponseSent;
+            m_crowdControl.EffectReportSent -= OnEffectReportSent;
+
+            m_crowdControl.AuthCodeReceived -= OnAuthCodeReceived;
+            m_crowdControl.AuthCodeRedeemedReceived -= OnAuthCodeRedeemedReceived;
+            m_crowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
+            m_crowdControl.SessionReady -= OnSessionReady;
+
+            try { m_crowdControl?.Dispose(); }
+            catch { /**/ }
+            try { m_crowdControl = null; }
+            catch { /**/ }
+        }
         
         /// <summary>Initializes and connects the Crowd Control client.</summary>
         public void Connect()
@@ -185,6 +206,9 @@ namespace CrowdControl.Client.Unity
             m_crowdControl.Connect();
             m_crowdControl.GetAuthCode();
         }
+
+        /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
+        public void Disconnect() => Stop();
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
@@ -359,15 +383,6 @@ namespace CrowdControl.Client.Unity
                 if (success) Debug.Log($"Ping response received.");
                 else Debug.LogError("Ping failed to receive a response.");   
             }
-        }
-    
-        /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
-        void Stop()
-        {
-            try { m_crowdControl?.Dispose(); }
-            catch { /**/ }
-            try { m_crowdControl = null; }
-            catch { /**/ }
         }
     
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>

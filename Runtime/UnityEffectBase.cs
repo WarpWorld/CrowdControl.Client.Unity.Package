@@ -65,7 +65,8 @@ namespace CrowdControl.Client.Unity
         /// This is used for menu file generation and has no impact on actual pricing in the service.
         /// </summary>
         [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
-        public int DefaultPrice;
+        [Min(1)]
+        public int DefaultPrice = 1;
 
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
