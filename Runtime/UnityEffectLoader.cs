@@ -1,6 +1,8 @@
+using CrowdControl.Client.WebSocket;
+using CrowdControl.Client.WebSocket.Actions;
+using CrowdControl.Common;
 using System;
 using System.Collections.Generic;
-using CrowdControl.Client.WebSocket.Actions;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -17,6 +19,10 @@ namespace CrowdControl.Client.Unity
         /// Gets a mapping of effect IDs to their corresponding <see cref="IEffect"/> handlers.
         /// </summary>
         public IDictionary<string, IEffect> Effects { get; } = new Dictionary<string, IEffect>();
+
+        private CrowdControlBehavior? m_crowdControl;
+
+        void Awake() => m_crowdControl = FindFirstObjectByType<CrowdControlBehavior>();
 
         /// <summary>
         /// Unity lifecycle method that initializes the effect registry by scanning child components.
