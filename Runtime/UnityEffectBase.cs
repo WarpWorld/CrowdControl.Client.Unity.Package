@@ -30,6 +30,12 @@ namespace CrowdControl.Client.Unity
         public string EffectID = string.Empty;
 
         /// <summary>
+        /// A human-readable description of what the effect does.
+        /// </summary>
+        [SerializeField, TextArea, Tooltip("A description of the effect.")]
+        public string Description;
+
+        /// <summary>
         /// All conflicting effect IDs. If any listed effect is running, this effect will be rejected.
         /// </summary>
         [SerializeField, Tooltip("All conflicting effect IDs.")]
@@ -53,12 +59,13 @@ namespace CrowdControl.Client.Unity
         [SerializeField, Tooltip("The default duration of the effect in seconds.")]
         [Range(0, 600)]
         public int DefaultDuration;
-    
+
         /// <summary>
-        /// A human-readable description of what the effect does.
+        /// The default price of the effect in Crowd Control coins.
+        /// This is used for menu file generation and has no impact on actual pricing in the service.
         /// </summary>
-        [SerializeField, TextArea, Tooltip("A description of the effect.")]
-        public string Description;
+        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
+        public int DefaultPrice;
 
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.

@@ -73,8 +73,14 @@ namespace CrowdControl.Client.Unity.Editors
                         {
                             JObject nextItem = new JObject
                             {
-                                ["id"] = item.EffectID,
-                                ["name"] = item.name
+                                //["id"] = item.EffectID,
+                                ["name"] = item.name,
+                                ["description"] = item.Description,
+                                ["price"] = item.DefaultPrice,
+                                ["defaultDuration"] = item.DefaultDuration,
+                                ["conflicts"] = JArray.FromObject(item.Conflicts),
+                                ["morality"] = item.Morality.ToString(),
+                                ["orderliness"] = item.Orderliness.ToString()
                             };
                             effects_game[item.EffectID] = nextItem;
                         }
