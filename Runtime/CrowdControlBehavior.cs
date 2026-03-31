@@ -81,7 +81,9 @@ namespace CrowdControl.Client.Unity
         public Scheduler Scheduler => m_crowdControl?.Scheduler ?? throw new InvalidOperationException("Crowd Control client is not initialized.");
 
         private SynchronizationContext? m_synchronizationContext;
-    
+
+        private UnityMainThreadTaskScheduler? m_taskScheduler;
+
         [NonSerialized]
         private WebSocket.CrowdControl? m_crowdControl;
 
@@ -156,6 +158,7 @@ namespace CrowdControl.Client.Unity
             };
 
             m_synchronizationContext = SynchronizationContext.Current;
+            m_taskScheduler = new(m_synchronizationContext);
             foreach (IMetadata metadata in MetadataLoader?.Metadata.Values ?? Array.Empty<UnityMetadataBase>())
             {
                 metadata.Updated += () =>
@@ -214,7 +217,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            m_crowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, GameID, ApplicationID, ApplicationSecret);
+            m_crowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
             m_crowdControl.LoadContent();
             m_crowdControl.EffectRequestReceived += OnEffectRequestReceived;
             m_crowdControl.EffectResponseSent += OnEffectResponseSent;
