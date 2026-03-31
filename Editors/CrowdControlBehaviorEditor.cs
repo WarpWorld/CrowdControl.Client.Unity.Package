@@ -72,7 +72,7 @@ namespace CrowdControl.Client.Unity.Editors
 
                         foreach (UnityEffectBase item in effectLoader.Effects.Values)
                         {
-                            JObject nextItem = new JObject
+                            JObject nextItem = JObject.FromObject(item);/*new JObject
                             {
                                 //["id"] = item.EffectID,
                                 ["name"] = item.name,
@@ -81,7 +81,7 @@ namespace CrowdControl.Client.Unity.Editors
                                 ["duration"] = new JObject { ["value"] = item.DefaultDuration },
                                 ["conflicts"] = JArray.FromObject(item.Conflicts),
                                 ["alignment"] = JObject.FromObject((Alignment)item.Morality + item.Orderliness)
-                            };
+                            };*/
                             effects_game[item.EffectID] = nextItem;
                         }
 
