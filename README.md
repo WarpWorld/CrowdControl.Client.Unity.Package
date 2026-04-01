@@ -24,18 +24,28 @@ To install the Crowd Control Unity package, follow these steps:
 To use the Crowd Control package in your Unity project, follow these steps:
 1. Create a new GameObject in your scene.
 2. Add the `CrowdControlBehavior` component to the GameObject.
-3. Configure the `CrowdControlBehavior` with your [Crowd Control game ID, app ID, and app secret](https://developer.crowdcontrol.live/sockets/#authenticating).
+3. Configure the `CrowdControlBehavior` with your [Crowd Control game ID, display name, app ID, and app secret](https://developer.crowdcontrol.live/sockets/#authenticating).
 4. Create a script that inherits from `GameStateManager` and assign it to a GameObject in your scene.
 5. Assign the `GameStateManager` instance to the `CrowdControlBehavior` component.
-6. Implement the desired Crowd Control effects in your game by creating classes that inherit from `CrowdControlEffect`.
-7. Create a new GameObject and add the `UnityEffectLoader` component to it.
+6. Create a new GameObject and add the `UnityEffectLoader` component to it.
+7. Assign the `UnityEffectLoader` instance to the `CrowdControlBehavior` component.
 
 ## Creating Effects
 
 To create custom Crowd Control effects in your Unity project, follow these steps:
-1. Create a new C# script that inherits from `CrowdControlEffect`.
+1. Create a new C# script that inherits from `UnityEffectBase`.
 2. Override the necessary methods to define the behavior of your effect.
 3. Create a new GameObject as a child of the `UnityEffectLoader` GameObject.
 4. Add the new effect script to the GameObject.
 5. Configure the effect parameters as needed.
 6. Repeat the process for each effect you want to add to your game.
+
+## Adding An Overlay
+
+To create an overlay to display running effects in your Unity project, follow these steps:
+1. Create a new C# script that inherits from `MonoBehaviour`.
+2. Create an OnEffectRequest(EffectRequest request) method to listen for incoming effect requests.
+3. Create an OnEffectUpdate(EffectState state) method to listen for effect status updates.
+4. Implement a layout that makes sense for your game.
+	a. The Crowd Control Unity demo project contains a basic example.
+	b. It is not recommended to use the demo example overlay in a production game. The overlay should ideally match the aesthetic and theme of your game.
