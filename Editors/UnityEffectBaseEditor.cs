@@ -1,9 +1,9 @@
 ﻿#if UNITY_EDITOR
 using CrowdControl.Common;
-using System;
-using System.Threading.Tasks;
+using System.Collections;
 using UnityEditor;
 using UnityEngine;
+using Unity.EditorCoroutines.Editor;
 
 namespace CrowdControl.Client.Unity.Editors
 {
@@ -30,13 +30,7 @@ namespace CrowdControl.Client.Unity.Editors
                 {
                     Log.Debug("Starting timed effect: " + effectID);
                     effect.StartEffect(request);
-
-                    // Schedule stop safely without blocking GUI or relying on SynchronizationContext
-                    Task.Run(async () =>
-                    {
-                        await Task.Delay((TimeSpan)request.Duration);
-                        EditorApplication.delayCall += () => effect.StopEffect(request);
-                    });
+                    EditorCoroutineUtility.StartCoroutineOwnerless(StopEffectCoroutine(effect, request));
                 }
                 else
                 {
@@ -44,6 +38,12 @@ namespace CrowdControl.Client.Unity.Editors
                     effect.StartEffect(request);
                 }
             }
+        }
+
+        private IEnumerator StopEffectCoroutine(UnityEffectBase effect, EffectRequest request)
+        {
+            yield return new EditorWaitForSeconds((float)request.Duration.TotalSeconds);
+            effect.StopEffect(request);
         }
     }
 }
