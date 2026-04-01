@@ -1,6 +1,9 @@
 {
     "name": "CrowdControl.Client.Unity.Editors",
-    "references": [ "CrowdControl.Client.Unity" ],
+    "references": [
+        "CrowdControl.Client.Unity",
+        "Unity.EditorCoroutines.Editor"
+    ],
     "precompiledReferences": [
         "CrowdControl.Common.dll",
         "CrowdControl.Extensions.dll",
