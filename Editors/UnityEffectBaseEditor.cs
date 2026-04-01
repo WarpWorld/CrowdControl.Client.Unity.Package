@@ -17,7 +17,15 @@ namespace CrowdControl.Client.Unity.Editors
             if (Application.isPlaying)
                 foreach (string effectID in effect.EffectAttribute.IDs)
                     if (GUILayout.Button("Test " + effectID))
-                        effect.StartEffect(new(effectID));
+                    {
+                        if (effect.IsTimed)
+                        {
+                            CrowdControlBehavior? crowdControl = FindFirstObjectByType<CrowdControlBehavior>();
+                            crowdControl?.Scheduler.ProcessRequest(new(effectID));
+                        }
+                        else
+                            effect.StartEffect(new(effectID));
+                    }
         }
     }
 }
