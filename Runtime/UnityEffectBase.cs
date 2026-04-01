@@ -97,6 +97,9 @@ namespace CrowdControl.Client.Unity
         /// <param name="client">The client socket used to communicate with the service.</param>
         protected UnityEffectBase(WebSocket.CrowdControl crowdControl, ClientSocket client)
         {
+            if (crowdControl == null) throw new ArgumentNullException(nameof(crowdControl));
+            if (client == null) throw new ArgumentNullException(nameof(client));
+
             CrowdControl = crowdControl;
             Client = client;
         }
