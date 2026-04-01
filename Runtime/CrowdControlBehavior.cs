@@ -202,11 +202,14 @@ namespace CrowdControl.Client.Unity
             m_crowdControl.AuthCodeRedeemedReceived -= OnAuthCodeRedeemedReceived;
             m_crowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
             m_crowdControl.SessionReady -= OnSessionReady;
+            m_crowdControl.SessionEnded -= OnSessionEnded;
 
             try { m_crowdControl?.Dispose(); }
             catch { /**/ }
             try { m_crowdControl = null; }
             catch { /**/ }
+
+            //OnSessionEnded();
         }
         
         /// <summary>Initializes and connects the Crowd Control client.</summary>
