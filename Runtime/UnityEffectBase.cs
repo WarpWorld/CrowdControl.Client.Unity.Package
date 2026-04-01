@@ -28,6 +28,7 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         [SerializeField, Tooltip("The effect ID associated with this effect.")]
         public string EffectID = string.Empty;
+        string IEffect.EffectID => EffectID;
 
         /// <summary>
         /// A human-readable description of what the effect does.
