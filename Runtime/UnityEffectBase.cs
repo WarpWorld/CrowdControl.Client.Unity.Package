@@ -4,6 +4,7 @@ using System.Reflection;
 using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -28,6 +29,13 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         [SerializeField, Tooltip("The effect ID associated with this effect.")]
         public string EffectID = string.Empty;
+        string IEffect.EffectID => EffectID;
+
+        /// <summary>
+        /// A human-readable description of what the effect does.
+        /// </summary>
+        [SerializeField, TextArea, Tooltip("A description of the effect.")]
+        public string Description;
 
         /// <summary>
         /// All conflicting effect IDs. If any listed effect is running, this effect will be rejected.
@@ -53,12 +61,14 @@ namespace CrowdControl.Client.Unity
         [SerializeField, Tooltip("The default duration of the effect in seconds.")]
         [Range(0, 600)]
         public int DefaultDuration;
-    
+
         /// <summary>
-        /// A human-readable description of what the effect does.
+        /// The default price of the effect in Crowd Control coins.
+        /// This is used for menu file generation and has no impact on actual pricing in the service.
         /// </summary>
-        [SerializeField, TextArea, Tooltip("A description of the effect.")]
-        public string Description;
+        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
+        [Min(1)]
+        public int DefaultPrice = 1;
 
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
@@ -68,29 +78,18 @@ namespace CrowdControl.Client.Unity
         /// <summary>
         /// Gets the owning Crowd Control instance.
         /// </summary>
-        public WebSocket.CrowdControl CrowdControl { get; }
+        public WebSocket.CrowdControl CrowdControl => CrowdControlBehavior.CrowdControl;
 
         /// <summary>
-        /// Gets the underlying client socket used for communication.
+        /// Gets the Crowd Control behavior component that provides access to game state and configuration.
         /// </summary>
-        public ClientSocket Client { get; }
+        public CrowdControlBehavior CrowdControlBehavior { get; private set; }
 
         /// <summary>
         /// Indicates whether the effect has been initialized. This is used to prevent multiple initializations in the Unity lifecycle.
         /// </summary>
         [NonSerialized]
         private bool m_initialized;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UnityEffectBase"/> class.
-        /// </summary>
-        /// <param name="crowdControl">The Crowd Control instance.</param>
-        /// <param name="client">The client socket used to communicate with the service.</param>
-        protected UnityEffectBase(WebSocket.CrowdControl crowdControl, ClientSocket client)
-        {
-            CrowdControl = crowdControl;
-            Client = client;
-        }
 
         /// <summary>
         /// Unity lifecycle method. Validates attributes and constructs the <see cref="EffectAttribute"/> metadata.
@@ -111,6 +110,7 @@ namespace CrowdControl.Client.Unity
             if (GetType().GetCustomAttributes<EffectAttribute>(false).Any())
                 throw new InvalidOperationException($"Effect classes inheriting from {nameof(UnityEffectBase)} should not be decorated with the {nameof(EffectAttribute)} attribute.");
             EffectAttribute = new(EffectID, DefaultDuration, Conflicts);
+            CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
         }
 
         /// <summary>Starts an effect in response to an effect request.</summary>

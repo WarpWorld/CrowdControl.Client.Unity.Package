@@ -1,9 +1,11 @@
+using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -17,49 +19,72 @@ namespace CrowdControl.Client.Unity
     {
         /// <summary>The game identifier used when connecting to the Crowd Control service.</summary>
         [SerializeField]
+        [Tooltip("The game identifier used when connecting to the Crowd Control service.")]
         public string GameID;
 
         /// <summary>The application identifier used for authentication with the Crowd Control service.</summary>
         [SerializeField]
+        [Tooltip("The application identifier used for authentication with the Crowd Control service.")]
         public string ApplicationID;
 
         /// <summary>The application secret used for authentication with the Crowd Control service.</summary>
         [SerializeField]
+        [Tooltip("The application secret used for authentication with the Crowd Control service.")]
         public string ApplicationSecret;
 
         /// <summary>The display name used when connecting to the Crowd Control service.</summary>
         [SerializeField]
+        [Tooltip("The display name used when connecting to the Crowd Control service.")]
         public string DisplayName;
 
         /// <summary>Component that provides the current <see cref="WebSocket.GameState"/> to Crowd Control.</summary>
         [SerializeField]
+        [Tooltip("Component responsible for providing the current game state to Crowd Control.")]
         public UnityGameStateManager? GameStateManager;
 
         /// <summary>Component responsible for finding and registering <see cref="UnityEffectBase"/> instances.</summary>
         [SerializeField]
+        [Tooltip("Component responsible for finding and registering effect instances.")]
         public UnityEffectLoader? EffectLoader;
 
         /// <summary>Component responsible for finding and registering <see cref="UnityMetadataBase"/> instances.</summary>
         [SerializeField]
+        [Tooltip("Component responsible for finding and registering metadata instances.")]
         public UnityMetadataLoader? MetadataLoader;
+
+        /*/// <summary>
+        /// Types of effects that this client will accept from the Crowd Control service.
+        /// Effects of other types will be silently discarded.
+        /// </summary>
+        /// <remarks>Do not change this value without consulting Crowd Control support.</remarks>
+        [SerializeField]
+        [Tooltip("Types of effects that this client will accept from the Crowd Control service. Effects of other types will be silently discarded. Do not change this value without consulting Crowd Control support.")]
+        public EffectRequest.EffectType allowedTypes = EffectRequest.EffectType.Game;*/
 
         /// <summary>Whether to automatically connect to Crowd Control on start.</summary>
         [SerializeField]
+        [Tooltip("Whether to automatically connect to Crowd Control on start.")]
         public bool autoConnect = true;
-        
+
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
+        [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
         public bool waitForPingResponse = false;
-        
+
         /// <summary>Gets a value indicating whether the Crowd Control client is currently connected.</summary>
         /// <remarks>True if the client is created and connected; false otherwise.</remarks>
-        public bool Connected => m_crowdControl?.Connected ?? false;
+        public bool Connected => CrowdControl?.Connected ?? false;
+
+        /// <summary>Gets the <see cref="Scheduler"/> instance used by the Crowd Control client for scheduling effect execution.</summary>
+        /// <remarks>Throws an exception if the client is not initialized.</remarks>
+        public Scheduler Scheduler => CrowdControl?.Scheduler ?? throw new InvalidOperationException("Crowd Control client is not initialized.");
 
         private SynchronizationContext? m_synchronizationContext;
-    
-        [NonSerialized]
-        private WebSocket.CrowdControl? m_crowdControl;
+
+        private UnityMainThreadTaskScheduler? m_taskScheduler;
+
+        public WebSocket.CrowdControl? CrowdControl { get; private set; }
 
         #region IEffectPack
 
@@ -132,12 +157,13 @@ namespace CrowdControl.Client.Unity
             };
 
             m_synchronizationContext = SynchronizationContext.Current;
+            m_taskScheduler = new(m_synchronizationContext);
             foreach (IMetadata metadata in MetadataLoader?.Metadata.Values ?? Array.Empty<UnityMetadataBase>())
             {
                 metadata.Updated += () =>
                 {
-                    if (m_crowdControl == null) return;
-                    m_crowdControl.UpdateMetadata(metadata.Key, metadata.Value);
+                    if (CrowdControl == null) return;
+                    CrowdControl.UpdateMetadata(metadata.Key, metadata.Value);
                 };
             }
         }
@@ -161,6 +187,29 @@ namespace CrowdControl.Client.Unity
 
             if (autoConnect) Connect();
         }
+
+        /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
+        void Stop()
+        {
+            if (CrowdControl == null) return;
+
+            CrowdControl.EffectRequestReceived -= OnEffectRequestReceived;
+            CrowdControl.EffectResponseSent -= OnEffectResponseSent;
+            CrowdControl.EffectReportSent -= OnEffectReportSent;
+
+            CrowdControl.AuthCodeReceived -= OnAuthCodeReceived;
+            CrowdControl.AuthCodeRedeemedReceived -= OnAuthCodeRedeemedReceived;
+            CrowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
+            CrowdControl.SessionReady -= OnSessionReady;
+            CrowdControl.SessionEnded -= OnSessionEnded;
+
+            try { CrowdControl?.Dispose(); }
+            catch { /**/ }
+            try { CrowdControl = null; }
+            catch { /**/ }
+
+            OnSessionEnded();
+        }
         
         /// <summary>Initializes and connects the Crowd Control client.</summary>
         public void Connect()
@@ -170,27 +219,33 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            m_crowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, GameID, ApplicationID, ApplicationSecret);
-            m_crowdControl.LoadContent();
-            m_crowdControl.EffectRequestReceived += OnEffectRequestReceived;
-            m_crowdControl.EffectResponseSent += OnEffectResponseSent;
-            m_crowdControl.EffectReportSent += OnEffectReportSent;
+            CrowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
+            CrowdControl.LoadContent();
+            CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
+            CrowdControl.EffectResponseSent += OnEffectResponseSent;
+            CrowdControl.EffectReportSent += OnEffectReportSent;
 
-            m_crowdControl.AuthCodeReceived += OnAuthCodeReceived;
-            m_crowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
-            m_crowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
-            m_crowdControl.SessionReady += OnSessionReady;
+            CrowdControl.AuthCodeReceived += OnAuthCodeReceived;
+            CrowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
+            CrowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
 
-            if (m_crowdControl == null) return;
-            m_crowdControl.Connect();
-            m_crowdControl.GetAuthCode();
+            CrowdControl.SessionReady += OnSessionReady;
+            CrowdControl.SessionEnded += OnSessionEnded;
+
+            if (CrowdControl == null) return;
+            CrowdControl.Connect();
+            CrowdControl.GetAuthCode();
         }
+
+        /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
+        public void Disconnect() => Stop();
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
         /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.")]
         public UnityEvent? SessionReadyEvent;
 
         /// <summary>Event invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
@@ -210,11 +265,37 @@ namespace CrowdControl.Client.Unity
             }, null);
         }
 
+        /// <summary>UnityEvent invoked when the Crowd Control session has ended. This can be used to trigger in-game responses to the session ending.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="SessionEnded"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked when the Crowd Control session has ended. This can be used to trigger in-game responses to the session ending.")]
+        public UnityEvent? SessionEndedEvent;
+
+        /// <summary>Event invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="SessionEndedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action? SessionEnded;
+
+        private void OnSessionEnded()
+        {
+            Debug.Log("Crowd Control session has ended.");
+            m_synchronizationContext?.Post(_ =>
+            {
+                SessionEnded.InvokeSafe();
+                SessionEndedEvent?.Invoke();
+            }, null);
+        }
+
         /// <summary>UnityEvent invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
         /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.")]
         public UnityEvent<ApplicationAuthCode>? AuthCodeReceivedEvent;
 
         /// <summary>Event invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
@@ -239,6 +320,7 @@ namespace CrowdControl.Client.Unity
         /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeRedeemedReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever an authentication code redemption result is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.")]
         public UnityEvent<ApplicationAuthCodeRedeemed>? AuthCodeRedeemedReceivedEvent;
 
         /// <summary>Event invoked whenever an authentication code redemption result is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
@@ -263,6 +345,7 @@ namespace CrowdControl.Client.Unity
         /// <remarks>Subscribers should use either this event or the <see cref="AuthCodeErrorReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever an authentication code error is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.")]
         public UnityEvent<ApplicationAuthCodeError>? AuthCodeErrorReceivedEvent;
 
         /// <summary>Event invoked whenever an authentication code error is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
@@ -287,6 +370,7 @@ namespace CrowdControl.Client.Unity
         /// <remarks>Subscribers should use either this event or the <see cref="EffectReceived"/> event, but not both, to avoid duplicate handling of effect requests.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever an effect request is received from the Crowd Control service. This can be used to trigger in-game responses to effect requests.")]
         public UnityEvent<EffectRequest>? EffectReceivedEvent;
 
         /// <summary>Event invoked whenever an effect request is received from the Crowd Control service. This can be used to trigger in-game responses to effect requests.</summary>
@@ -310,6 +394,7 @@ namespace CrowdControl.Client.Unity
         /// <remarks>Subscribers should use either this event or the <see cref="EffectUpdate"/> event, but not both, to avoid duplicate handling of effect responses.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever an effect response is sent to the Crowd Control service. This can be used to trigger in-game responses to effect updates.")]
         public UnityEvent<EffectState>? EffectUpdateEvent;
         
         /// <summary>Event invoked whenever an effect response is sent to the Crowd Control service. This can be used to trigger in-game responses to effect updates.</summary>
@@ -322,8 +407,8 @@ namespace CrowdControl.Client.Unity
 
         private void OnEffectResponseSent(EffectRequest effectRequest, EffectResponse effectResponse)
         {
-            if (m_crowdControl == null) return;
-            if (!m_crowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
+            if (CrowdControl == null) return;
+            if (!CrowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
             EffectState state = new(effect, effectRequest, effectResponse);
             m_synchronizationContext?.Post(_ =>
             {
@@ -342,8 +427,8 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not connected! Cannot ping Crowd Control.");
                 return;
             }
-            System.Diagnostics.Debug.Assert(m_crowdControl != null);
-            Task<bool> result = m_crowdControl.Ping();
+            System.Diagnostics.Debug.Assert(CrowdControl != null);
+            Task<bool> result = CrowdControl.Ping();
             if (waitForPingResponse)
             {
                 result.Wait();
@@ -361,47 +446,48 @@ namespace CrowdControl.Client.Unity
             }
         }
     
-        /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
-        void Stop()
-        {
-            try { m_crowdControl?.Dispose(); }
-            catch { /**/ }
-            try { m_crowdControl = null; }
-            catch { /**/ }
-        }
-    
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>
         void FixedUpdate()
         {
-            m_crowdControl?.Update(Time.time, Time.deltaTime);
+            CrowdControl?.Update(Time.time, Time.deltaTime);
         }
     
         /// <summary>Unity callback invoked when the component is destroyed; ensures disposal.</summary>
         void OnDestroy() => Dispose();
 
-        public void ReportCapabilities()
-        {
-            throw new NotImplementedException();
-        }
+        /// <summary>
+        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles capability reporting internally.
+        /// This method is intentionally left blank.
+        /// </summary>
+        public void ReportCapabilities() { }
 
+        /// <summary>
+        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles precheck internally.
+        /// This method always returns Success.
+        /// </summary>
         public IEffectPack.PrecheckResult Precheck(out string message)
         {
-            throw new NotImplementedException();
+            message = string.Empty;
+            return IEffectPack.PrecheckResult.Success;
         }
 
-        public void ProcessRequest(IEffectPackProcessable request)
-        {
-            throw new NotImplementedException();
-        }
+        /// <summary>
+        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles effect processing internally.
+        /// This method is intentionally left blank.
+        /// </summary>
+        public void ProcessRequest(IEffectPackProcessable request) { }
 
+        /// <summary>This method attempts to stop all running effects via the Crowd Control effect scheduler.</summary>
+        /// <remarks>This will return false if any of the effect stop functions throw an exception.</remarks>
         public bool StopAllEffects()
         {
-            throw new NotImplementedException();
+            return CrowdControl?.Scheduler.StopAll() ?? false;
         }
 
-        public Task<string> InterpolateText(string message)
-        {
-            throw new NotImplementedException();
-        }
+        /// <summary>
+        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles text interpolation internally.
+        /// This method always returns the input message unmodified.
+        /// </summary>
+        public Task<string> InterpolateText(string message) => Task.FromResult(message);
     }
 }

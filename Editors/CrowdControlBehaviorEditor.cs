@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using CrowdControl.Client.WebSocket.Actions;
+using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -73,9 +74,15 @@ namespace CrowdControl.Client.Unity.Editors
                         {
                             JObject nextItem = new JObject
                             {
-                                ["id"] = item.EffectID,
-                                ["name"] = item.name
+                                //["id"] = item.EffectID,
+                                ["name"] = item.name,
+                                ["description"] = item.Description,
+                                ["price"] = item.DefaultPrice,
+                                ["conflicts"] = JArray.FromObject(item.Conflicts),
+                                ["alignment"] = JObject.FromObject((Alignment)item.Morality + item.Orderliness)
                             };
+                            if (item.IsTimed)
+                                nextItem["duration"] = new JObject { ["value"] = item.DefaultDuration };
                             effects_game[item.EffectID] = nextItem;
                         }
 
