@@ -219,7 +219,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
