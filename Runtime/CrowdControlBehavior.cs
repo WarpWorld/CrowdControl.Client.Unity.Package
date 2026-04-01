@@ -74,18 +74,17 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>Gets a value indicating whether the Crowd Control client is currently connected.</summary>
         /// <remarks>True if the client is created and connected; false otherwise.</remarks>
-        public bool Connected => m_crowdControl?.Connected ?? false;
+        public bool Connected => CrowdControl?.Connected ?? false;
 
         /// <summary>Gets the <see cref="Scheduler"/> instance used by the Crowd Control client for scheduling effect execution.</summary>
         /// <remarks>Throws an exception if the client is not initialized.</remarks>
-        public Scheduler Scheduler => m_crowdControl?.Scheduler ?? throw new InvalidOperationException("Crowd Control client is not initialized.");
+        public Scheduler Scheduler => CrowdControl?.Scheduler ?? throw new InvalidOperationException("Crowd Control client is not initialized.");
 
         private SynchronizationContext? m_synchronizationContext;
 
         private UnityMainThreadTaskScheduler? m_taskScheduler;
 
-        [NonSerialized]
-        private WebSocket.CrowdControl? m_crowdControl;
+        public WebSocket.CrowdControl? CrowdControl { get; private set; }
 
         #region IEffectPack
 
@@ -163,8 +162,8 @@ namespace CrowdControl.Client.Unity
             {
                 metadata.Updated += () =>
                 {
-                    if (m_crowdControl == null) return;
-                    m_crowdControl.UpdateMetadata(metadata.Key, metadata.Value);
+                    if (CrowdControl == null) return;
+                    CrowdControl.UpdateMetadata(metadata.Key, metadata.Value);
                 };
             }
         }
@@ -192,21 +191,21 @@ namespace CrowdControl.Client.Unity
         /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
         void Stop()
         {
-            if (m_crowdControl == null) return;
+            if (CrowdControl == null) return;
 
-            m_crowdControl.EffectRequestReceived -= OnEffectRequestReceived;
-            m_crowdControl.EffectResponseSent -= OnEffectResponseSent;
-            m_crowdControl.EffectReportSent -= OnEffectReportSent;
+            CrowdControl.EffectRequestReceived -= OnEffectRequestReceived;
+            CrowdControl.EffectResponseSent -= OnEffectResponseSent;
+            CrowdControl.EffectReportSent -= OnEffectReportSent;
 
-            m_crowdControl.AuthCodeReceived -= OnAuthCodeReceived;
-            m_crowdControl.AuthCodeRedeemedReceived -= OnAuthCodeRedeemedReceived;
-            m_crowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
-            m_crowdControl.SessionReady -= OnSessionReady;
-            m_crowdControl.SessionEnded -= OnSessionEnded;
+            CrowdControl.AuthCodeReceived -= OnAuthCodeReceived;
+            CrowdControl.AuthCodeRedeemedReceived -= OnAuthCodeRedeemedReceived;
+            CrowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
+            CrowdControl.SessionReady -= OnSessionReady;
+            CrowdControl.SessionEnded -= OnSessionEnded;
 
-            try { m_crowdControl?.Dispose(); }
+            try { CrowdControl?.Dispose(); }
             catch { /**/ }
-            try { m_crowdControl = null; }
+            try { CrowdControl = null; }
             catch { /**/ }
 
             OnSessionEnded();
@@ -220,22 +219,22 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            m_crowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
-            m_crowdControl.LoadContent();
-            m_crowdControl.EffectRequestReceived += OnEffectRequestReceived;
-            m_crowdControl.EffectResponseSent += OnEffectResponseSent;
-            m_crowdControl.EffectReportSent += OnEffectReportSent;
+            CrowdControl = WebSocket.CrowdControl.Create(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
+            CrowdControl.LoadContent();
+            CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
+            CrowdControl.EffectResponseSent += OnEffectResponseSent;
+            CrowdControl.EffectReportSent += OnEffectReportSent;
 
-            m_crowdControl.AuthCodeReceived += OnAuthCodeReceived;
-            m_crowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
-            m_crowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
+            CrowdControl.AuthCodeReceived += OnAuthCodeReceived;
+            CrowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
+            CrowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
 
-            m_crowdControl.SessionReady += OnSessionReady;
-            m_crowdControl.SessionEnded += OnSessionEnded;
+            CrowdControl.SessionReady += OnSessionReady;
+            CrowdControl.SessionEnded += OnSessionEnded;
 
-            if (m_crowdControl == null) return;
-            m_crowdControl.Connect();
-            m_crowdControl.GetAuthCode();
+            if (CrowdControl == null) return;
+            CrowdControl.Connect();
+            CrowdControl.GetAuthCode();
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
@@ -408,8 +407,8 @@ namespace CrowdControl.Client.Unity
 
         private void OnEffectResponseSent(EffectRequest effectRequest, EffectResponse effectResponse)
         {
-            if (m_crowdControl == null) return;
-            if (!m_crowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
+            if (CrowdControl == null) return;
+            if (!CrowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
             EffectState state = new(effect, effectRequest, effectResponse);
             m_synchronizationContext?.Post(_ =>
             {
@@ -428,8 +427,8 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not connected! Cannot ping Crowd Control.");
                 return;
             }
-            System.Diagnostics.Debug.Assert(m_crowdControl != null);
-            Task<bool> result = m_crowdControl.Ping();
+            System.Diagnostics.Debug.Assert(CrowdControl != null);
+            Task<bool> result = CrowdControl.Ping();
             if (waitForPingResponse)
             {
                 result.Wait();
@@ -450,7 +449,7 @@ namespace CrowdControl.Client.Unity
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>
         void FixedUpdate()
         {
-            m_crowdControl?.Update(Time.time, Time.deltaTime);
+            CrowdControl?.Update(Time.time, Time.deltaTime);
         }
     
         /// <summary>Unity callback invoked when the component is destroyed; ensures disposal.</summary>
@@ -482,7 +481,7 @@ namespace CrowdControl.Client.Unity
         /// <remarks>This will return false if any of the effect stop functions throw an exception.</remarks>
         public bool StopAllEffects()
         {
-            return m_crowdControl?.Scheduler.StopAll() ?? false;
+            return CrowdControl?.Scheduler.StopAll() ?? false;
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using System.Reflection;
 using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
+using JetBrains.Annotations;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -77,32 +78,18 @@ namespace CrowdControl.Client.Unity
         /// <summary>
         /// Gets the owning Crowd Control instance.
         /// </summary>
-        public WebSocket.CrowdControl CrowdControl { get; }
+        public WebSocket.CrowdControl CrowdControl => CrowdControlBehavior.CrowdControl;
 
         /// <summary>
-        /// Gets the underlying client socket used for communication.
+        /// Gets the Crowd Control behavior component that provides access to game state and configuration.
         /// </summary>
-        public ClientSocket Client { get; }
+        public CrowdControlBehavior CrowdControlBehavior { get; private set; }
 
         /// <summary>
         /// Indicates whether the effect has been initialized. This is used to prevent multiple initializations in the Unity lifecycle.
         /// </summary>
         [NonSerialized]
         private bool m_initialized;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="UnityEffectBase"/> class.
-        /// </summary>
-        /// <param name="crowdControl">The Crowd Control instance.</param>
-        /// <param name="client">The client socket used to communicate with the service.</param>
-        protected UnityEffectBase(WebSocket.CrowdControl crowdControl, ClientSocket client)
-        {
-            if (crowdControl == null) throw new ArgumentNullException(nameof(crowdControl));
-            if (client == null) throw new ArgumentNullException(nameof(client));
-
-            CrowdControl = crowdControl;
-            Client = client;
-        }
 
         /// <summary>
         /// Unity lifecycle method. Validates attributes and constructs the <see cref="EffectAttribute"/> metadata.
@@ -123,6 +110,7 @@ namespace CrowdControl.Client.Unity
             if (GetType().GetCustomAttributes<EffectAttribute>(false).Any())
                 throw new InvalidOperationException($"Effect classes inheriting from {nameof(UnityEffectBase)} should not be decorated with the {nameof(EffectAttribute)} attribute.");
             EffectAttribute = new(EffectID, DefaultDuration, Conflicts);
+            CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
         }
 
         /// <summary>Starts an effect in response to an effect request.</summary>
