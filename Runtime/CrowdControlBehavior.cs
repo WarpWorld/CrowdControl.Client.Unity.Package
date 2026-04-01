@@ -209,7 +209,7 @@ namespace CrowdControl.Client.Unity
             try { m_crowdControl = null; }
             catch { /**/ }
 
-            //OnSessionEnded();
+            OnSessionEnded();
         }
         
         /// <summary>Initializes and connects the Crowd Control client.</summary>
