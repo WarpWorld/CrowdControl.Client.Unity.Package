@@ -24,13 +24,17 @@ namespace CrowdControl.Client.Unity.Editors
                     {
                         if (effect.IsTimed)
                         {
+                            Log.Debug("Starting timed effect: " + effectID);
                             SynchronizationContext context = SynchronizationContext.Current;
                             EffectRequest request = new(effectID);
                             effect.StartEffect(request);
                             StopEffectAfterDelay(effect, request, context).Forget();
                         }
                         else
+                        {
+                            Log.Debug("Starting instant effect: " + effectID);
                             effect.StartEffect(new(effectID));
+                        }
                     }
         }
 
