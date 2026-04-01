@@ -1,4 +1,8 @@
 ﻿#if UNITY_EDITOR
+using CrowdControl.Common;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -20,12 +24,20 @@ namespace CrowdControl.Client.Unity.Editors
                     {
                         if (effect.IsTimed)
                         {
-                            CrowdControlBehavior? crowdControl = FindFirstObjectByType<CrowdControlBehavior>();
-                            crowdControl?.Scheduler.ProcessRequest(new(effectID));
+                            SynchronizationContext context = SynchronizationContext.Current;
+                            EffectRequest request = new(effectID);
+                            effect.StartEffect(request);
+                            StopEffectAfterDelay(effect, request, context).Forget();
                         }
                         else
                             effect.StartEffect(new(effectID));
                     }
+        }
+
+        private async Task StopEffectAfterDelay(UnityEffectBase effect, EffectRequest request, SynchronizationContext context)
+        {
+            await Task.Delay((TimeSpan)request.Duration);
+            context.Post(_ => effect.StopEffect(request), null);
         }
     }
 }
