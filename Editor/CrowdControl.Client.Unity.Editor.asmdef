@@ -1,5 +1,5 @@
 {
-    "name": "CrowdControl.Client.Unity.Editors",
+    "name": "CrowdControl.Client.Unity.Editor",
     "references": [
         "CrowdControl.Client.Unity",
         "Unity.EditorCoroutines.Editor"

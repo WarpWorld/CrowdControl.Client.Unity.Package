@@ -1,13 +1,14 @@
 ﻿#if UNITY_EDITOR
+using CrowdControl.Client.Unity.Editor.Shims;
 using CrowdControl.Client.WebSocket.Metadata;
 using UnityEditor;
 using UnityEngine;
 
-namespace CrowdControl.Client.Unity.Editors
+namespace CrowdControl.Client.Unity.Editor
 {
     /// <summary>Custom editor for UnityMetadataBase that displays the runtime Value in the inspector.</summary>
     [CustomEditor(typeof(UnityMetadataBase), true)]
-    public class UnityMetadataBaseEditor : Editor
+    public class UnityMetadataBaseEditor : UnityEditor.Editor
     {
         /// <summary>Custom inspector GUI that adds a read-only display of the Value during play mode.</summary>
         public override void OnInspectorGUI()

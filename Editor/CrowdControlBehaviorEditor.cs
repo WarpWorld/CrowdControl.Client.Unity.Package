@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using CrowdControl.Client.Unity.Editor.Shims;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
@@ -7,10 +8,10 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
-namespace CrowdControl.Client.Unity.Editors
+namespace CrowdControl.Client.Unity.Editor
 {
     [CustomEditor(typeof(CrowdControlBehavior))]
-    public class CrowdControlBehaviorEditor : Editor
+    public class CrowdControlBehaviorEditor : UnityEditor.Editor
     {
         private static readonly Regex VALID_GAME_ID = new(@"^[a-zA-Z_][a-zA-Z0-9_]*$");
 
