@@ -1,10 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
-using JetBrains.Annotations;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -13,11 +12,6 @@ namespace CrowdControl.Client.Unity
     /// <remarks>Effect implementations should inherit from this class.</remarks>
     public abstract class UnityEffectBase : MonoBehaviour, IEffect
     {
-        /// <summary>
-        /// Metadata describing this effect, including IDs and default duration.
-        /// </summary>
-        public EffectAttribute EffectAttribute { get; private set; }
-
         /// <summary>
         /// The display name associated with this effect.
         /// </summary>
@@ -30,6 +24,7 @@ namespace CrowdControl.Client.Unity
         [SerializeField, Tooltip("The effect ID associated with this effect.")]
         public string EffectID = string.Empty;
         string IEffect.EffectID => EffectID;
+        IReadOnlyList<string> IEffect.IDs => new[] { EffectID };
 
         /// <summary>
         /// A human-readable description of what the effect does.
@@ -42,6 +37,7 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         [SerializeField, Tooltip("All conflicting effect IDs.")]
         public string[] Conflicts;
+        IReadOnlyList<string> IEffect.Conflicts => Conflicts;
 
         /// <summary>
         /// The moral alignment of the effect.
@@ -61,6 +57,7 @@ namespace CrowdControl.Client.Unity
         [SerializeField, Tooltip("The default duration of the effect in seconds.")]
         [Range(0, 600)]
         public int DefaultDuration;
+        SITimeSpan IEffect.DefaultDuration => DefaultDuration;
 
         /// <summary>
         /// The default price of the effect in Crowd Control coins.
@@ -73,7 +70,7 @@ namespace CrowdControl.Client.Unity
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
         /// </summary>
-        public bool IsTimed => EffectAttribute.DefaultDuration > 0;
+        public bool IsTimed => DefaultDuration > 0;
 
         /// <summary>
         /// Gets the owning Crowd Control instance.
@@ -107,9 +104,6 @@ namespace CrowdControl.Client.Unity
             if (m_initialized) return;
             m_initialized = true;
 
-            if (GetType().GetCustomAttributes<EffectAttribute>(false).Any())
-                throw new InvalidOperationException($"Effect classes inheriting from {nameof(UnityEffectBase)} should not be decorated with the {nameof(EffectAttribute)} attribute.");
-            EffectAttribute = new(EffectID, DefaultDuration, Conflicts);
             CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
         }
 
