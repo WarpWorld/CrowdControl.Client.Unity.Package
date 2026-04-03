@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-using CrowdControl.Client.Unity.Editor.Shims;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
@@ -80,7 +79,7 @@ namespace CrowdControl.Client.Unity.Editor
                                 ["description"] = item.Description,
                                 ["price"] = item.DefaultPrice,
                                 ["conflicts"] = JArray.FromObject(item.Conflicts),
-                                ["alignment"] = JObject.FromObject((Alignment)item.Morality + item.Orderliness)
+                                ["alignment"] = JObject.FromObject(new Alignment(item.Orderliness, item.Morality)) //do not simplify syntax here, it appears to not build consistently depending on unity version and/or build settings - kat
                             };
                             if (item.IsTimed)
                                 nextItem["duration"] = new JObject { ["value"] = item.DefaultDuration };

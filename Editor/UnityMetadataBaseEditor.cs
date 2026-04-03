@@ -1,5 +1,4 @@
 ﻿#if UNITY_EDITOR
-using CrowdControl.Client.Unity.Editor.Shims;
 using CrowdControl.Client.WebSocket.Metadata;
 using UnityEditor;
 using UnityEngine;
