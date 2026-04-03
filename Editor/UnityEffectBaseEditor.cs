@@ -3,6 +3,7 @@ using CrowdControl.Common;
 using System.Collections;
 using UnityEditor;
 using UnityEngine;
+using Unity.EditorCoroutines.Editor;
 
 namespace CrowdControl.Client.Unity.Editor
 {
