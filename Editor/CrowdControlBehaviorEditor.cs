@@ -7,10 +7,10 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
 
-namespace CrowdControl.Client.Unity.Editors
+namespace CrowdControl.Client.Unity.Editor
 {
     [CustomEditor(typeof(CrowdControlBehavior))]
-    public class CrowdControlBehaviorEditor : Editor
+    public class CrowdControlBehaviorEditor : UnityEditor.Editor
     {
         private static readonly Regex VALID_GAME_ID = new(@"^[a-zA-Z_][a-zA-Z0-9_]*$");
 
@@ -79,7 +79,7 @@ namespace CrowdControl.Client.Unity.Editors
                                 ["description"] = item.Description,
                                 ["price"] = item.DefaultPrice,
                                 ["conflicts"] = JArray.FromObject(item.Conflicts),
-                                ["alignment"] = JObject.FromObject((Alignment)item.Morality + item.Orderliness)
+                                ["alignment"] = JObject.FromObject(new Alignment(item.Orderliness, item.Morality)) //do not simplify syntax here, it appears to not build consistently depending on unity version and/or build settings - kat
                             };
                             if (item.IsTimed)
                                 nextItem["duration"] = new JObject { ["value"] = item.DefaultDuration };

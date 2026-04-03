@@ -5,11 +5,11 @@ using UnityEditor;
 using UnityEngine;
 using Unity.EditorCoroutines.Editor;
 
-namespace CrowdControl.Client.Unity.Editors
+namespace CrowdControl.Client.Unity.Editor
 {
     /// <summary>Custom editor for UnityEffectBase that adds buttons to test each effect ID during play mode.</summary>
     [CustomEditor(typeof(UnityEffectBase), true)]
-    public class UnityEffectBaseEditor : Editor
+    public class UnityEffectBaseEditor : UnityEditor.Editor
     {
         /// <summary>Custom inspector GUI that adds buttons to test each effect ID during play mode.</summary>
         public override void OnInspectorGUI()
