@@ -1,9 +1,7 @@
 ﻿#if UNITY_EDITOR
 using CrowdControl.Common;
-using System.Collections;
 using UnityEditor;
 using UnityEngine;
-using Unity.EditorCoroutines.Editor;
 
 namespace CrowdControl.Client.Unity.Editor
 {
@@ -28,9 +26,10 @@ namespace CrowdControl.Client.Unity.Editor
 
                 if (effect.IsTimed)
                 {
-                    Log.Debug("Starting timed effect: " + effectID);
-                    effect.StartEffect(request);
-                    EditorCoroutineUtility.StartCoroutineOwnerless(StopEffectCoroutine(effect, request));
+                    Log.Debug("Testing timed effects in the editor is not currently supported.");
+                    //Log.Debug("Starting timed effect: " + effectID);
+                    //effect.StartEffect(request);
+                    //EditorCoroutineUtility.StartCoroutineOwnerless(StopEffectCoroutine(effect, request));
                 }
                 else
                 {
@@ -40,11 +39,11 @@ namespace CrowdControl.Client.Unity.Editor
             }
         }
 
-        private IEnumerator StopEffectCoroutine(UnityEffectBase effect, EffectRequest request)
+        /*private IEnumerator StopEffectCoroutine(UnityEffectBase effect, EffectRequest request)
         {
             yield return new EditorWaitForSeconds((float)request.Duration.TotalSeconds);
             effect.StopEffect(request);
-        }
+        }*/
     }
 }
 #endif

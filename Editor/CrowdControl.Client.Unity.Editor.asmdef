@@ -2,8 +2,7 @@
     "name": "CrowdControl.Client.Unity.Editor",
     "includePlatforms": ["Editor"],
     "references": [
-        "CrowdControl.Client.Unity",
-        "Unity.EditorCoroutines.Editor"
+        "CrowdControl.Client.Unity"
     ],
     "precompiledReferences": [
         "CrowdControl.Common.dll",
