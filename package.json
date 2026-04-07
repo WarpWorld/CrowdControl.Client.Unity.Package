@@ -1,7 +1,7 @@
 {
   "name": "com.warpworld.crowdcontrol",
   "displayName": "Crowd Control",
-  "version": "5.0.958925032",
+  "version": "5.0.959322733",
   "unity": "6000.2",
   "description": "Integrate Crowd Control into your Unity game with this easy-to-use package.",
   "author": {
@@ -10,7 +10,6 @@
     "email": "support@crowdcontrol.live"
   },
   "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "3.2.2",
-    "com.unity.editorcoroutines": "1.0.1"
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
   }
 }

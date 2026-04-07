@@ -2,12 +2,10 @@
     "name": "CrowdControl.Client.Unity.Editor",
     "includePlatforms": ["Editor"],
     "references": [
-        "CrowdControl.Client.Unity",
-        "Unity.EditorCoroutines.Editor"
+        "CrowdControl.Client.Unity"
     ],
     "precompiledReferences": [
-        "CrowdControl.Common.dll",
-        "CrowdControl.Extensions.dll",
+        "CrowdControl.Common.Mini.dll",
         "CrowdControl.Client.WebSocket.dll"
     ],
     "autoReferenced": true,

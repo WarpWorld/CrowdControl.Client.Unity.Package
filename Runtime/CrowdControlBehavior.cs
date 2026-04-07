@@ -1,21 +1,20 @@
 using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
-using CrowdControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
+using CrowdControl.Common;
 
 namespace CrowdControl.Client.Unity
 {
     /// <summary>Unity MonoBehaviour that wires up and manages the Crowd Control client lifecycle for a scene.</summary>
     /// <remarks>Requires a <see cref="UnityGameStateManager"/> to provide game state and a <see cref="UnityEffectLoader"/> to expose available effects.</remarks>
-    public class CrowdControlBehavior : MonoBehaviour, IDisposable, IEffectPack
+    public class CrowdControlBehavior : MonoBehaviour, IDisposable
     {
         /// <summary>The game identifier used when connecting to the Crowd Control service.</summary>
         [SerializeField]
@@ -85,28 +84,6 @@ namespace CrowdControl.Client.Unity
         private UnityMainThreadTaskScheduler? m_taskScheduler;
 
         public WebSocket.CrowdControl? CrowdControl { get; private set; }
-
-        #region IEffectPack
-
-        Game IEffectPack.Game => new Game(DisplayName, GameID);
-
-        public List<(string, Action)> MenuActions { get; } = new();
-
-        public UISettings UISettings { get; } = new UISettings();
-
-        public EffectList Effects => (EffectList?)EffectLoader?.Effects.Values.Select(e => e.ToEffect()) ?? new();
-
-        public EffectList ConnectorEffects { get; } = new();
-
-        public IEnumerable<Effect> SupportedEffects => Effects;
-
-        public IEnumerable<Effect> UnsupportedEffects { get; } = Array.Empty<Effect>();
-
-        public SITimeSpan GlobalMinimumDelay { get; set; } = SITimeSpan.Zero;
-
-        public IDictionary<string, object> MetadataDefaults => throw new NotImplementedException();
-
-        #endregion
 
         /// <summary>Finalizer to ensure resources are released if <see cref="Dispose()"/> wasn't called.</summary>
         ~CrowdControlBehavior() => Dispose(false);
@@ -455,39 +432,11 @@ namespace CrowdControl.Client.Unity
         /// <summary>Unity callback invoked when the component is destroyed; ensures disposal.</summary>
         void OnDestroy() => Dispose();
 
-        /// <summary>
-        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles capability reporting internally.
-        /// This method is intentionally left blank.
-        /// </summary>
-        public void ReportCapabilities() { }
-
-        /// <summary>
-        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles precheck internally.
-        /// This method always returns Success.
-        /// </summary>
-        public IEffectPack.PrecheckResult Precheck(out string message)
-        {
-            message = string.Empty;
-            return IEffectPack.PrecheckResult.Success;
-        }
-
-        /// <summary>
-        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles effect processing internally.
-        /// This method is intentionally left blank.
-        /// </summary>
-        public void ProcessRequest(IEffectPackProcessable request) { }
-
         /// <summary>This method attempts to stop all running effects via the Crowd Control effect scheduler.</summary>
         /// <remarks>This will return false if any of the effect stop functions throw an exception.</remarks>
         public bool StopAllEffects()
         {
             return CrowdControl?.Scheduler.StopAll() ?? false;
         }
-
-        /// <summary>
-        /// Required by the IEffectPack interface but not used in this implementation since the Crowd Control client handles text interpolation internally.
-        /// This method always returns the input message unmodified.
-        /// </summary>
-        public Task<string> InterpolateText(string message) => Task.FromResult(message);
     }
 }

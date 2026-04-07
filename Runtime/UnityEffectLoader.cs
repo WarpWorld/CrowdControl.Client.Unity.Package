@@ -34,7 +34,7 @@ namespace CrowdControl.Client.Unity
             foreach (UnityEffectBase effect in GetComponentsInChildren<UnityEffectBase>())
             {
                 effect.Initialize();
-                foreach (string id in effect.EffectAttribute.IDs)
+                foreach (string id in ((IEffect)effect).IDs)
                     Effects.Add(id, effect);
             }
         }
