@@ -5,8 +5,7 @@
         "CrowdControl.Client.Unity"
     ],
     "precompiledReferences": [
-        "CrowdControl.Common.dll",
-        "CrowdControl.Extensions.dll",
+        "CrowdControl.Common.Mini.dll",
         "CrowdControl.Client.WebSocket.dll"
     ],
     "autoReferenced": true,
