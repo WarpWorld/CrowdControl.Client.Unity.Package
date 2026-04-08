@@ -71,6 +71,12 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
         public bool waitForPingResponse = false;
 
+        /// <summary>
+        /// Backing field for the JWT token used for authentication with the Crowd Control service.
+        /// This is set when a new token is received and is used for reconnecting if the connection is lost.
+        /// </summary>
+        private string? m_jwt;
+
         /// <summary>Gets a value indicating whether the Crowd Control client is currently connected.</summary>
         /// <remarks>True if the client is created and connected; false otherwise.</remarks>
         public bool Connected => CrowdControl?.Connected ?? false;
@@ -196,7 +202,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
@@ -205,13 +211,20 @@ namespace CrowdControl.Client.Unity
             CrowdControl.AuthCodeReceived += OnAuthCodeReceived;
             CrowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
             CrowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
+            CrowdControl.JwtTokenReceived += j => m_jwt = j;
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
 
-            if (CrowdControl == null) return;
             CrowdControl.Connect();
-            CrowdControl.GetAuthCode();
+            if (CrowdControl.IsTokenValid())
+                CrowdControl.GetAuthCode().Forget();
+            else
+                Task.Run(async () =>
+                {
+                    if(!(await CrowdControl.StartSession()))
+                        CrowdControl.GetAuthCode().Forget();
+                });
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
