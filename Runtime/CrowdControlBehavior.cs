@@ -218,13 +218,13 @@ namespace CrowdControl.Client.Unity
 
             CrowdControl.Connect();
             if (CrowdControl.IsTokenValid())
-                CrowdControl.GetAuthCode().Forget();
-            else
                 Task.Run(async () =>
                 {
-                    if(!(await CrowdControl.StartSession()))
-                        CrowdControl.GetAuthCode().Forget();
-                });
+                    if (!(await CrowdControl.StartSession()))
+                        await CrowdControl.GetAuthCode();
+                }).Forget();
+            else
+                CrowdControl.GetAuthCode().Forget();
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
