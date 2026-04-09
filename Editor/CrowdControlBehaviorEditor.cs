@@ -48,7 +48,7 @@ namespace CrowdControl.Client.Unity.Editor
                 {
                     if (GUILayout.Button("Clear JWT Token"))
                     {
-                        behavior.DestroyToken();
+                        behavior.ClearToken();
                     }
                 }
 
