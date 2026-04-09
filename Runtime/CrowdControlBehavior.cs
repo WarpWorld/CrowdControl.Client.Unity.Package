@@ -374,6 +374,30 @@ namespace CrowdControl.Client.Unity
             }, null);
         }
 
+        /// <summary>UnityEvent invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="LoginTokenReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.")]
+        public UnityEvent<string>? LoginTokenReceivedEvent;
+
+        /// <summary>Event invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="LoginTokenReceivedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action<string>? LoginTokenReceived;
+
+        private void OnLoginTokenReceived(string token)
+        {
+            m_synchronizationContext?.Post(_ =>
+            {
+                LoginTokenReceived.InvokeSafe(token);
+                LoginTokenReceivedEvent?.Invoke(token);
+            }, null);
+        }
+
         /// <summary>UnityEvent invoked whenever an effect request is received from the Crowd Control service. This can be used to trigger in-game responses to effect requests.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
         /// <remarks>Subscribers should use either this event or the <see cref="EffectReceived"/> event, but not both, to avoid duplicate handling of effect requests.</remarks>
