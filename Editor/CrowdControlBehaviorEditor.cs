@@ -44,6 +44,14 @@ namespace CrowdControl.Client.Unity.Editor
                     }
                 }
 
+                using (new EditorGUI.DisabledScope((!Application.isPlaying) || (!behavior.isActiveAndEnabled)))
+                {
+                    if (GUILayout.Button("Clear JWT Token"))
+                    {
+                        behavior.DestroyToken();
+                    }
+                }
+
                 EditorGUILayout.Space();
 
                 UnityEffectLoader effectLoader = FindFirstObjectByType<UnityEffectLoader>();

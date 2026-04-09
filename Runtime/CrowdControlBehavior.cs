@@ -63,13 +63,18 @@ namespace CrowdControl.Client.Unity
         /// <summary>Whether to automatically connect to Crowd Control on start.</summary>
         [SerializeField]
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
-        public bool autoConnect = true;
+        public bool AutoConnect = true;
 
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
         [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
-        public bool waitForPingResponse = false;
+        public bool WaitForPingResponse = false;
+
+        /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
+        [SerializeField]
+        [Tooltip("Whether to persist the JWT token for reconnecting between executions.")]
+        public bool PersistToken = true;
 
         /// <summary>
         /// Backing field for the JWT token used for authentication with the Crowd Control service.
@@ -168,7 +173,7 @@ namespace CrowdControl.Client.Unity
                 return;
             }
 
-            if (autoConnect) Connect();
+            if (AutoConnect) Connect();
         }
 
         /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
@@ -211,7 +216,11 @@ namespace CrowdControl.Client.Unity
             CrowdControl.AuthCodeReceived += OnAuthCodeReceived;
             CrowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
             CrowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
-            CrowdControl.JwtTokenReceived += j => m_jwt = j;
+            CrowdControl.JwtTokenReceived += j =>
+            {
+                m_jwt = j;
+                if (PersistToken) PlayerPrefs.SetString("CrowdControl_JWT", j);
+            };
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
@@ -229,6 +238,13 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
+
+        /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
+        public void ClearToken()
+        {
+            m_jwt = null;
+            PlayerPrefs.DeleteKey("CrowdControl_JWT");
+        }
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
@@ -419,7 +435,7 @@ namespace CrowdControl.Client.Unity
             }
             System.Diagnostics.Debug.Assert(CrowdControl != null);
             Task<bool> result = CrowdControl.Ping();
-            if (waitForPingResponse)
+            if (WaitForPingResponse)
             {
                 result.Wait();
                 printResult(result.Result);
