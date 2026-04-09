@@ -74,7 +74,7 @@ namespace CrowdControl.Client.Unity
         /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
         [SerializeField]
         [Tooltip("Whether to persist the JWT token for reconnecting between executions.")]
-        public bool PersistToken = true;
+        public bool PersistLoginToken = true;
 
         /// <summary>
         /// Backing field for the JWT token used for authentication with the Crowd Control service.
@@ -222,7 +222,7 @@ namespace CrowdControl.Client.Unity
             CrowdControl.JwtTokenReceived += j =>
             {
                 m_jwt = j;
-                if (PersistToken) PlayerPrefs.SetString("CrowdControl_JWT", j);
+                if (PersistLoginToken) PlayerPrefs.SetString("CrowdControl_JWT", j);
             };
 
             CrowdControl.SessionReady += OnSessionReady;
