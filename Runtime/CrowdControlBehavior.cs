@@ -82,6 +82,9 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         private string? m_jwt;
 
+        /// <summary>Gets a value indicating whether there is a valid JWT token available for authentication with the Crowd Control service.</summary>
+        public bool HasValidToken => CrowdControl?.IsTokenValid() ?? false;
+
         /// <summary>Gets a value indicating whether the Crowd Control client is currently connected.</summary>
         /// <remarks>True if the client is created and connected; false otherwise.</remarks>
         public bool Connected => CrowdControl?.Connected ?? false;
