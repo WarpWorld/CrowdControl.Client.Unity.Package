@@ -63,7 +63,7 @@ namespace CrowdControl.Client.Unity
         /// <summary>Whether to automatically connect to Crowd Control on start.</summary>
         [SerializeField]
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
-        public bool AutoConnect = true;
+        public bool AutoConnect = false;
 
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
@@ -176,6 +176,8 @@ namespace CrowdControl.Client.Unity
                 return;
             }
 
+            m_jwt = PlayerPrefs.GetString("CrowdControl_JWT", null);
+
             if (AutoConnect) Connect();
         }
 
@@ -222,31 +224,63 @@ namespace CrowdControl.Client.Unity
             CrowdControl.JwtTokenReceived += j =>
             {
                 m_jwt = j;
-                if (PersistLoginToken) PlayerPrefs.SetString("CrowdControl_JWT", j);
+                if (PersistLoginToken)
+                {
+                    m_synchronizationContext?.Post(_ =>
+                    {
+                        Log.Debug("Persisting JWT token...");
+                        PlayerPrefs.SetString("CrowdControl_JWT", j);
+                        PlayerPrefs.Save();
+                    }, null);
+                }
             };
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
 
             CrowdControl.Connect();
+
             if (CrowdControl.IsTokenValid())
+            {
+                Log.Debug("Valid JWT token found, attempting to start session...");
                 Task.Run(async () =>
                 {
                     if (!(await CrowdControl.StartSession()))
                         await CrowdControl.GetAuthCode();
                 }).Forget();
+            }
             else
+            {
+                Log.Debug("No valid JWT token found, requesting authentication code...");
                 CrowdControl.GetAuthCode().Forget();
+            }
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
 
+        /// <summary>Gets a value indicating whether there is a valid JWT token stored for authentication with the Crowd Control service.</summary>
+        public static bool IsStoredTokenValid
+            => WebSocket.CrowdControl.IsTokenValid(PlayerPrefs.GetString("CrowdControl_JWT", null));
+
+        /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
+        public static void ClearStoredToken()
+        {
+            PlayerPrefs.DeleteKey("CrowdControl_JWT");
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>Gets a value indicating whether the currently stored JWT token is valid for authentication with the Crowd Control service.</summary>
+        public bool IsTokenValid => WebSocket.CrowdControl.IsTokenValid(m_jwt);
+
         /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
         public void ClearToken()
         {
-            m_jwt = null;
-            PlayerPrefs.DeleteKey("CrowdControl_JWT");
+            m_synchronizationContext?.Post(_ =>
+            {
+                m_jwt = null;
+                ClearStoredToken();
+            }, null);
         }
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
