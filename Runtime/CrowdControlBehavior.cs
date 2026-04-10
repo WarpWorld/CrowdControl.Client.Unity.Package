@@ -224,9 +224,12 @@ namespace CrowdControl.Client.Unity
                 m_jwt = j;
                 if (PersistLoginToken)
                 {
-                    Log.Debug("Persisting JWT token...");
-                    PlayerPrefs.SetString("CrowdControl_JWT", j);
-                    PlayerPrefs.Save();
+                    m_synchronizationContext?.Post(_ =>
+                    {
+                        Log.Debug("Persisting JWT token...");
+                        PlayerPrefs.SetString("CrowdControl_JWT", j);
+                        PlayerPrefs.Save();
+                    }, null);
                 }
             };
 
@@ -257,9 +260,12 @@ namespace CrowdControl.Client.Unity
         /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
         public void ClearToken()
         {
-            m_jwt = null;
-            PlayerPrefs.DeleteKey("CrowdControl_JWT");
-            PlayerPrefs.Save();
+            m_synchronizationContext?.Post(_ =>
+            {
+                m_jwt = null;
+                PlayerPrefs.DeleteKey("CrowdControl_JWT");
+                PlayerPrefs.Save();
+            }, null);
         }
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
