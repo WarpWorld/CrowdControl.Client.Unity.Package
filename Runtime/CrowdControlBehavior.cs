@@ -176,6 +176,8 @@ namespace CrowdControl.Client.Unity
                 return;
             }
 
+            m_jwt = PlayerPrefs.GetString("CrowdControl_JWT", null);
+
             if (AutoConnect) Connect();
         }
 
