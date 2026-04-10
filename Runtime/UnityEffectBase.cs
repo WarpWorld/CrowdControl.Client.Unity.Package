@@ -87,9 +87,8 @@ namespace CrowdControl.Client.Unity
         private bool m_initialized;
 
         /// <summary>
-        /// Unity lifecycle method. Validates attributes and constructs the <see cref="EffectAttribute"/> metadata.
+        /// Unity lifecycle method. Initializes the effect when the GameObject is first loaded. This ensures that the effect is ready to handle requests as soon as it becomes active in the scene.
         /// </summary>
-        /// <exception cref="InvalidOperationException">Thrown if the derived class is decorated with <see cref="EffectAttribute"/>.</exception>
         protected virtual void Awake() => Initialize();
 
         /// <summary>

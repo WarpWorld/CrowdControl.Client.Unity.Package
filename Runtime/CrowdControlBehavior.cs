@@ -63,13 +63,27 @@ namespace CrowdControl.Client.Unity
         /// <summary>Whether to automatically connect to Crowd Control on start.</summary>
         [SerializeField]
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
-        public bool autoConnect = true;
+        public bool AutoConnect = true;
 
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
         [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
-        public bool waitForPingResponse = false;
+        public bool WaitForPingResponse = false;
+
+        /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
+        [SerializeField]
+        [Tooltip("Whether to persist the JWT token for reconnecting between executions.")]
+        public bool PersistLoginToken = true;
+
+        /// <summary>
+        /// Backing field for the JWT token used for authentication with the Crowd Control service.
+        /// This is set when a new token is received and is used for reconnecting if the connection is lost.
+        /// </summary>
+        private string? m_jwt;
+
+        /// <summary>Gets a value indicating whether there is a valid JWT token available for authentication with the Crowd Control service.</summary>
+        public bool HasValidToken => CrowdControl?.IsTokenValid() ?? false;
 
         /// <summary>Gets a value indicating whether the Crowd Control client is currently connected.</summary>
         /// <remarks>True if the client is created and connected; false otherwise.</remarks>
@@ -162,7 +176,7 @@ namespace CrowdControl.Client.Unity
                 return;
             }
 
-            if (autoConnect) Connect();
+            if (AutoConnect) Connect();
         }
 
         /// <summary>Stops and disposes the Crowd Control client instance, if any.</summary>
@@ -196,7 +210,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
@@ -205,17 +219,35 @@ namespace CrowdControl.Client.Unity
             CrowdControl.AuthCodeReceived += OnAuthCodeReceived;
             CrowdControl.AuthCodeRedeemedReceived += OnAuthCodeRedeemedReceived;
             CrowdControl.AuthCodeErrorReceived += OnAuthCodeErrorReceived;
+            CrowdControl.JwtTokenReceived += j =>
+            {
+                m_jwt = j;
+                if (PersistLoginToken) PlayerPrefs.SetString("CrowdControl_JWT", j);
+            };
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
 
-            if (CrowdControl == null) return;
             CrowdControl.Connect();
-            CrowdControl.GetAuthCode();
+            if (CrowdControl.IsTokenValid())
+                Task.Run(async () =>
+                {
+                    if (!(await CrowdControl.StartSession()))
+                        await CrowdControl.GetAuthCode();
+                }).Forget();
+            else
+                CrowdControl.GetAuthCode().Forget();
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
+
+        /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
+        public void ClearToken()
+        {
+            m_jwt = null;
+            PlayerPrefs.DeleteKey("CrowdControl_JWT");
+        }
 
         /// <summary>UnityEvent invoked when the Crowd Control session is ready. This can be used to trigger in-game responses to the session being ready.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
@@ -342,6 +374,30 @@ namespace CrowdControl.Client.Unity
             }, null);
         }
 
+        /// <summary>UnityEvent invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="LoginTokenReceived"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once UnassignedField.Global
+        [Tooltip("Invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.")]
+        public UnityEvent<string>? LoginTokenReceivedEvent;
+
+        /// <summary>Event invoked whenever a JWT login token is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
+        /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="LoginTokenReceivedEvent"/> event, but not both, to avoid duplicate handling of authentication events.</remarks>
+        /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
+        // ReSharper disable once EventNeverSubscribedTo.Global
+        public event Action<string>? LoginTokenReceived;
+
+        private void OnLoginTokenReceived(string token)
+        {
+            m_synchronizationContext?.Post(_ =>
+            {
+                LoginTokenReceived.InvokeSafe(token);
+                LoginTokenReceivedEvent?.Invoke(token);
+            }, null);
+        }
+
         /// <summary>UnityEvent invoked whenever an effect request is received from the Crowd Control service. This can be used to trigger in-game responses to effect requests.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
         /// <remarks>Subscribers should use either this event or the <see cref="EffectReceived"/> event, but not both, to avoid duplicate handling of effect requests.</remarks>
@@ -406,7 +462,7 @@ namespace CrowdControl.Client.Unity
             }
             System.Diagnostics.Debug.Assert(CrowdControl != null);
             Task<bool> result = CrowdControl.Ping();
-            if (waitForPingResponse)
+            if (WaitForPingResponse)
             {
                 result.Wait();
                 printResult(result.Result);
