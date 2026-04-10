@@ -259,6 +259,9 @@ namespace CrowdControl.Client.Unity
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
 
+        public bool IsTokenValid
+            => WebSocket.CrowdControl.IsTokenValid(PlayerPrefs.GetString("CrowdControl_JWT", null));
+
         /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
         public void ClearToken()
         {
