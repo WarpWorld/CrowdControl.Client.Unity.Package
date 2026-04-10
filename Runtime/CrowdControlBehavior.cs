@@ -259,8 +259,19 @@ namespace CrowdControl.Client.Unity
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
 
-        public bool IsTokenValid
+        /// <summary>Gets a value indicating whether there is a valid JWT token stored for authentication with the Crowd Control service.</summary>
+        public static bool IsStoredTokenValid
             => WebSocket.CrowdControl.IsTokenValid(PlayerPrefs.GetString("CrowdControl_JWT", null));
+
+        /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
+        public static void ClearStoredToken()
+        {
+            PlayerPrefs.DeleteKey("CrowdControl_JWT");
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>Gets a value indicating whether the currently stored JWT token is valid for authentication with the Crowd Control service.</summary>
+        public bool IsTokenValid => WebSocket.CrowdControl.IsTokenValid(m_jwt);
 
         /// <summary>Clears the stored JWT token, forcing a full re-authentication on the next connection attempt.</summary>
         public void ClearToken()
@@ -268,8 +279,7 @@ namespace CrowdControl.Client.Unity
             m_synchronizationContext?.Post(_ =>
             {
                 m_jwt = null;
-                PlayerPrefs.DeleteKey("CrowdControl_JWT");
-                PlayerPrefs.Save();
+                ClearStoredToken();
             }, null);
         }
 
