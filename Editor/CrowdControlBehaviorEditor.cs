@@ -31,25 +31,19 @@ namespace CrowdControl.Client.Unity.Editor
                 using (new EditorGUI.DisabledScope((!Application.isPlaying) || (!behavior.isActiveAndEnabled)))
                 {
                     if (GUILayout.Button("Connect"))
-                    {
                         behavior.Connect();
-                    }
                 }
 
                 using (new EditorGUI.DisabledScope((!Application.isPlaying) || (!behavior.isActiveAndEnabled) || (!behavior.Connected)))
                 {
                     if (GUILayout.Button("Ping Test"))
-                    {
                         behavior.Ping();
-                    }
                 }
 
                 using (new EditorGUI.DisabledScope((!Application.isPlaying) || (!behavior.isActiveAndEnabled)))
                 {
-                    if (GUILayout.Button("Clear JWT Token"))
-                    {
+                    if (GUILayout.Button("Clear Login Token"))
                         behavior.ClearToken();
-                    }
                 }
 
                 EditorGUILayout.Space();

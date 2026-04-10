@@ -229,14 +229,21 @@ namespace CrowdControl.Client.Unity
             CrowdControl.SessionEnded += OnSessionEnded;
 
             CrowdControl.Connect();
+
             if (CrowdControl.IsTokenValid())
+            {
+                Log.Debug("Valid JWT token found, attempting to start session...");
                 Task.Run(async () =>
                 {
                     if (!(await CrowdControl.StartSession()))
                         await CrowdControl.GetAuthCode();
                 }).Forget();
+            }
             else
+            {
+                Log.Debug("No valid JWT token found, requesting authentication code...");
                 CrowdControl.GetAuthCode().Forget();
+            }
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
