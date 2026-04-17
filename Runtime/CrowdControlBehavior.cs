@@ -79,7 +79,7 @@ namespace CrowdControl.Client.Unity
         /// <summary>Whether to preserve the manager when switching between scenes.</summary>
         [SerializeField]
         [Tooltip("Whether to preserve the manager when switching between scenes.")]
-        public bool DontDestroyOnLoad = false;
+        public bool PreserveBetweenScenes = false;
 
         /// <summary>
         /// Backing field for the JWT token used for authentication with the Crowd Control service.
@@ -126,7 +126,7 @@ namespace CrowdControl.Client.Unity
 
         void Awake()
         {
-            if (DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
+            if (PreserveBetweenScenes) DontDestroyOnLoad(gameObject);
 
             Debug.Log("Rerouting Crowd Control logs to Unity console...");
             Log.FileOutput = false;
