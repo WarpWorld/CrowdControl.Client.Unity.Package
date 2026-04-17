@@ -21,6 +21,11 @@ namespace CrowdControl.Client.Unity
         [Tooltip("The game identifier used when connecting to the Crowd Control service.")]
         public string GameID;
 
+        /// <summary>The display name used when connecting to the Crowd Control service.</summary>
+        [SerializeField]
+        [Tooltip("The display name used when connecting to the Crowd Control service.")]
+        public string DisplayName;
+
         /// <summary>The application identifier used for authentication with the Crowd Control service.</summary>
         [SerializeField]
         [Tooltip("The application identifier used for authentication with the Crowd Control service.")]
@@ -30,11 +35,6 @@ namespace CrowdControl.Client.Unity
         [SerializeField]
         [Tooltip("The application secret used for authentication with the Crowd Control service.")]
         public string ApplicationSecret;
-
-        /// <summary>The display name used when connecting to the Crowd Control service.</summary>
-        [SerializeField]
-        [Tooltip("The display name used when connecting to the Crowd Control service.")]
-        public string DisplayName;
 
         /// <summary>Component that provides the current <see cref="WebSocket.GameState"/> to Crowd Control.</summary>
         [SerializeField]
@@ -75,6 +75,11 @@ namespace CrowdControl.Client.Unity
         [SerializeField]
         [Tooltip("Whether to persist the JWT token for reconnecting between executions.")]
         public bool PersistLoginToken = true;
+
+        /// <summary>Whether to preserve the manager when switching between scenes.</summary>
+        [SerializeField]
+        [Tooltip("Whether to preserve the manager when switching between scenes.")]
+        public bool DontDestroyOnLoad = false;
 
         /// <summary>
         /// Backing field for the JWT token used for authentication with the Crowd Control service.
@@ -121,6 +126,8 @@ namespace CrowdControl.Client.Unity
 
         void Awake()
         {
+            if (DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
+
             Debug.Log("Rerouting Crowd Control logs to Unity console...");
             Log.FileOutput = false;
             Log.ConsoleOutput = false;
