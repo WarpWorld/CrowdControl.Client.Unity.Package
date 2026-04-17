@@ -463,17 +463,17 @@ namespace CrowdControl.Client.Unity
             }, null);
         }
 
-        /// <summary>UnityEvent invoked whenever an effect response is sent to the Crowd Control service. This can be used to trigger in-game responses to effect updates.</summary>
+        /// <summary>UnityEvent invoked whenever an effect class update is sent to the Crowd Control service. This can be used to trigger in-game responses to effect class updates.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
-        /// <remarks>Subscribers should use either this event or the <see cref="EffectUpdate"/> event, but not both, to avoid duplicate handling of effect responses.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="EffectUpdate"/> event, but not both, to avoid duplicate handling of effect updates.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once UnassignedField.Global
-        [Tooltip("Invoked whenever an effect response is sent to the Crowd Control service. This can be used to trigger in-game responses to effect updates.")]
+        [Tooltip("Invoked whenever an effect class update is sent to the Crowd Control service. This can be used to trigger in-game responses to effect class updates.")]
         public UnityEvent<EffectState>? EffectUpdateEvent;
-        
-        /// <summary>Event invoked whenever an effect response is sent to the Crowd Control service. This can be used to trigger in-game responses to effect updates.</summary>
+
+        /// <summary>Event invoked whenever an effect class update is sent to the Crowd Control service. This can be used to trigger in-game responses to effect class updates.</summary>
         /// <remarks>Note that this event is invoked on the Unity main thread, so it's safe to perform Unity operations in response to it.</remarks>
-        /// <remarks>Subscribers should use either this event or the <see cref="EffectUpdateEvent"/> event, but not both, to avoid duplicate handling of effect responses.</remarks>
+        /// <remarks>Subscribers should use either this event or the <see cref="EffectUpdateEvent"/> event, but not both, to avoid duplicate handling of effect updates.</remarks>
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once EventNeverSubscribedTo.Global
         public event Action<EffectState>? EffectUpdate;
