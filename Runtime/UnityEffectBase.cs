@@ -11,18 +11,18 @@ namespace CrowdControl.Client.Unity
     public abstract class UnityEffectBase : MonoBehaviour, IEffect
     {
         /// <summary>
-        /// The display name associated with this effect.
-        /// </summary>
-        [SerializeField, Tooltip("The display name associated with this effect.")]
-        public string Name = string.Empty;
-
-        /// <summary>
         /// The primary effect ID associated with this effect.
         /// </summary>
         [SerializeField, Tooltip("The effect ID associated with this effect.")]
         public string EffectID = string.Empty;
         string IEffect.EffectID => EffectID;
         IReadOnlyList<string> IEffect.IDs => new[] { EffectID };
+
+        /// <summary>
+        /// The display name associated with this effect.
+        /// </summary>
+        [SerializeField, Tooltip("The display name associated with this effect.")]
+        public string Name = string.Empty;
 
         /// <summary>
         /// A human-readable description of what the effect does.
