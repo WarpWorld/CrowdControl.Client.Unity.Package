@@ -13,7 +13,7 @@ namespace CrowdControl.Client.Unity.Editor
             SerializedProperty id = property.FindPropertyRelative("ID");
             SerializedProperty name = property.FindPropertyRelative("Name");
             SerializedProperty type = property.FindPropertyRelative("Type");
-            SerializedProperty items = property.FindPropertyRelative("Items");
+            SerializedProperty options = property.FindPropertyRelative("Options");
 
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
@@ -38,8 +38,8 @@ namespace CrowdControl.Client.Unity.Editor
                 if ((ParameterBase.ParameterType)type.enumValueIndex == ParameterBase.ParameterType.Options)
                 {
                     lineRect.y += lineHeight + spacing;
-                    lineRect.height = EditorGUI.GetPropertyHeight(items, true);
-                    EditorGUI.PropertyField(lineRect, items, true);
+                    lineRect.height = EditorGUI.GetPropertyHeight(options, true);
+                    EditorGUI.PropertyField(lineRect, options, true);
                 }
 
                 EditorGUI.indentLevel--;
@@ -53,7 +53,7 @@ namespace CrowdControl.Client.Unity.Editor
             SerializedProperty name = property.FindPropertyRelative("Name");
             SerializedProperty id = property.FindPropertyRelative("ID");
             SerializedProperty type = property.FindPropertyRelative("Type");
-            SerializedProperty items = property.FindPropertyRelative("Items");
+            SerializedProperty options = property.FindPropertyRelative("Options");
 
             float height = EditorGUIUtility.singleLineHeight;
             if (!property.isExpanded)
@@ -65,7 +65,7 @@ namespace CrowdControl.Client.Unity.Editor
             height += spacing + EditorGUI.GetPropertyHeight(type);
 
             if ((ParameterBase.ParameterType)type.enumValueIndex == ParameterBase.ParameterType.Options)
-                height += spacing + EditorGUI.GetPropertyHeight(items, true);
+                height += spacing + EditorGUI.GetPropertyHeight(options, true);
 
             return height;
         }
