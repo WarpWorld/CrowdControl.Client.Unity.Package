@@ -58,6 +58,21 @@ namespace CrowdControl.Client.Unity
         SITimeSpan IEffect.DefaultDuration => DefaultDuration;
 
         /// <summary>
+        /// Gets the maximum allowed quantity for this effect, if applicable. A value of 1 or less indicates a non-quantity effect.
+        /// </summary>
+        [SerializeField, Tooltip("The maximum allowed quantity for this effect.")]
+        [Range(0, 10_000)]
+        public uint MaxQuantity;
+        uint IEffect.MaxQuantity => MaxQuantity;
+
+        /// <summary>
+        /// Gets the collection of parameter types associated with this instance.
+        /// </summary>
+        [SerializeField, Tooltip("The collection of parameter types associated with this effect.")]
+        public ParameterDef[]? Parameters;
+        ParameterList? IEffect.Parameters => (Parameters != null) ? new(Parameters) : null;
+
+        /// <summary>
         /// The default price of the effect in Crowd Control coins.
         /// This is used for menu file generation and has no impact on actual pricing in the service.
         /// </summary>
