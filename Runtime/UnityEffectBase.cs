@@ -31,6 +31,14 @@ namespace CrowdControl.Client.Unity
         public string Description;
 
         /// <summary>
+        /// The default price of the effect in Crowd Control coins.
+        /// This is used for menu file generation and has no impact on actual pricing in the service.
+        /// </summary>
+        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
+        [Min(1)]
+        public int DefaultPrice = 1;
+
+        /// <summary>
         /// All conflicting effect IDs. If any listed effect is running, this effect will be rejected.
         /// </summary>
         [SerializeField, Tooltip("All conflicting effect IDs.")]
@@ -71,14 +79,6 @@ namespace CrowdControl.Client.Unity
         [SerializeField, Tooltip("The collection of parameter types associated with this effect.")]
         public ParameterDef[]? Parameters;
         ParameterList? IEffect.Parameters => (Parameters != null) ? new(Parameters) : null;
-
-        /// <summary>
-        /// The default price of the effect in Crowd Control coins.
-        /// This is used for menu file generation and has no impact on actual pricing in the service.
-        /// </summary>
-        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
-        [Min(1)]
-        public int DefaultPrice = 1;
 
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
