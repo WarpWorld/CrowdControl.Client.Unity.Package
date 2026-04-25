@@ -11,12 +11,6 @@ namespace CrowdControl.Client.Unity
     public abstract class UnityEffectBase : MonoBehaviour, IEffect
     {
         /// <summary>
-        /// The display name associated with this effect.
-        /// </summary>
-        [SerializeField, Tooltip("The display name associated with this effect.")]
-        public string Name = string.Empty;
-
-        /// <summary>
         /// The primary effect ID associated with this effect.
         /// </summary>
         [SerializeField, Tooltip("The effect ID associated with this effect.")]
@@ -25,10 +19,24 @@ namespace CrowdControl.Client.Unity
         IReadOnlyList<string> IEffect.IDs => new[] { EffectID };
 
         /// <summary>
+        /// The display name associated with this effect.
+        /// </summary>
+        [SerializeField, Tooltip("The display name associated with this effect.")]
+        public string Name = string.Empty;
+
+        /// <summary>
         /// A human-readable description of what the effect does.
         /// </summary>
         [SerializeField, TextArea, Tooltip("A description of the effect.")]
         public string Description;
+
+        /// <summary>
+        /// The default price of the effect in Crowd Control coins.
+        /// This is used for menu file generation and has no impact on actual pricing in the service.
+        /// </summary>
+        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
+        [Min(1)]
+        public int DefaultPrice = 1;
 
         /// <summary>
         /// All conflicting effect IDs. If any listed effect is running, this effect will be rejected.
@@ -58,12 +66,19 @@ namespace CrowdControl.Client.Unity
         SITimeSpan IEffect.DefaultDuration => DefaultDuration;
 
         /// <summary>
-        /// The default price of the effect in Crowd Control coins.
-        /// This is used for menu file generation and has no impact on actual pricing in the service.
+        /// Gets the maximum allowed quantity for this effect, if applicable. A value of 1 or less indicates a non-quantity effect.
         /// </summary>
-        [SerializeField, Tooltip("The default price of the effect in Crowd Control coins.")]
-        [Min(1)]
-        public int DefaultPrice = 1;
+        [SerializeField, Tooltip("The maximum allowed quantity for this effect.")]
+        [Range(0, 10_000)]
+        public uint MaxQuantity;
+        uint IEffect.MaxQuantity => MaxQuantity;
+
+        /// <summary>
+        /// Gets the collection of parameter types associated with this instance.
+        /// </summary>
+        [SerializeField, Tooltip("The collection of parameter types associated with this effect.")]
+        public ParameterDef[]? Parameters;
+        ParameterList? IEffect.Parameters => (Parameters != null) ? new(Parameters) : null;
 
         /// <summary>
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
