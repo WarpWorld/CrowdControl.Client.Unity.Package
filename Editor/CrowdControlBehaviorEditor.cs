@@ -83,8 +83,20 @@ namespace CrowdControl.Client.Unity.Editor
                                 ["conflicts"] = JArray.FromObject(item.Conflicts),
                                 ["alignment"] = JObject.FromObject(new Alignment(item.Orderliness, item.Morality)) //do not simplify syntax here, it appears to not build consistently depending on unity version and/or build settings - kat
                             };
+
                             if (item.IsTimed)
                                 nextItem["duration"] = new JObject { ["value"] = item.DefaultDuration };
+
+                            if (item.MaxQuantity > 1)
+                                nextItem["quantity"] = new JObject
+                                {
+                                    ["min"] = 1,
+                                    ["max"] = item.MaxQuantity
+                                };
+
+                            if (item.Parameters != null)
+                                nextItem["parameters"] = JObject.FromObject(item.Parameters);
+
                             effects_game[item.EffectID] = nextItem;
                         }
 
