@@ -94,8 +94,9 @@ namespace CrowdControl.Client.Unity.Editor
                                     ["max"] = item.MaxQuantity
                                 };
 
-                            if (item.Parameters != null)
-                                nextItem["parameters"] = JObject.FromObject(item.Parameters);
+                            ParameterList? parameters = ((IEffect)item).Parameters;
+                            if (parameters != null)
+                                nextItem["parameters"] = JObject.FromObject(parameters);
 
                             effects_game[item.EffectID] = nextItem;
                         }
