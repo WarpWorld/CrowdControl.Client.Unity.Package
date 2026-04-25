@@ -27,10 +27,10 @@ namespace CrowdControl.Client.Unity.Editor
                 EditorGUI.indentLevel++;
 
                 lineRect.y += lineHeight + spacing;
-                EditorGUI.PropertyField(lineRect, name);
+                EditorGUI.PropertyField(lineRect, id);
 
                 lineRect.y += lineHeight + spacing;
-                EditorGUI.PropertyField(lineRect, id);
+                EditorGUI.PropertyField(lineRect, name);
 
                 lineRect.y += lineHeight + spacing;
                 EditorGUI.PropertyField(lineRect, type);
@@ -50,8 +50,8 @@ namespace CrowdControl.Client.Unity.Editor
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            SerializedProperty name = property.FindPropertyRelative("Name");
             SerializedProperty id = property.FindPropertyRelative("ID");
+            SerializedProperty name = property.FindPropertyRelative("Name");
             SerializedProperty type = property.FindPropertyRelative("Type");
             SerializedProperty options = property.FindPropertyRelative("Options");
 
@@ -60,8 +60,8 @@ namespace CrowdControl.Client.Unity.Editor
                 return height;
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
-            height += spacing + EditorGUI.GetPropertyHeight(name);
             height += spacing + EditorGUI.GetPropertyHeight(id);
+            height += spacing + EditorGUI.GetPropertyHeight(name);
             height += spacing + EditorGUI.GetPropertyHeight(type);
 
             if ((ParameterBase.ParameterType)type.enumValueIndex == ParameterBase.ParameterType.Options)
