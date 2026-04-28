@@ -27,7 +27,10 @@ namespace CrowdControl.Client.Unity.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Testing", EditorStyles.boldLabel);
 
-            testQuantity = EditorGUILayout.IntSlider("Quantity", Mathf.Clamp(testQuantity, 1, maxTestQuantity), 1, maxTestQuantity);
+            if (maxQuantity < 1)
+                testQuantity = 1;
+            else
+                testQuantity = EditorGUILayout.IntSlider("Quantity", Mathf.Clamp(testQuantity, 1, maxTestQuantity), 1, maxTestQuantity);
 
             if (GUILayout.Button("Test " + effectID))
             {
