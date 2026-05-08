@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using CrowdControl.Common;
+using UnityEngine.Serialization;
 
 namespace CrowdControl.Client.Unity
 {
@@ -33,6 +34,7 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>The public client key used for authentication with the Crowd Control service.</summary>
         [SerializeField]
+        [FormerlySerializedAs("ApplicationSecret")]
         [Tooltip("The public client key used for authentication with the Crowd Control service.")]
         public string PublicClientKey;
 
