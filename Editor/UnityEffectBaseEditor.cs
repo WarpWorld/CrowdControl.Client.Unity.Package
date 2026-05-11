@@ -11,6 +11,9 @@ namespace CrowdControl.Client.Unity.Editor
     {
         private int testQuantity = 1;
 
+        private bool isTimed;
+        private bool hasQuantity;
+
         /// <summary>Custom inspector GUI that adds buttons to test each effect ID during play mode.</summary>
         public override void OnInspectorGUI()
         {
@@ -24,10 +27,8 @@ namespace CrowdControl.Client.Unity.Editor
 
             DrawPropertiesExcluding(serializedObject, "m_Script", nameof(UnityEffectBase.DefaultDuration), nameof(UnityEffectBase.MaxQuantity));
 
-            bool isTimed = defaultDurationProperty.intValue > 0;
-            bool showDefaultDuration = EditorGUILayout.Toggle("Timed Effect", isTimed);
-
-            if (showDefaultDuration)
+            isTimed = EditorGUILayout.Toggle("Timed Effect", isTimed);
+            if (isTimed)
             {
                 if (defaultDurationProperty.intValue < 1)
                     defaultDurationProperty.intValue = 1;
@@ -39,14 +40,10 @@ namespace CrowdControl.Client.Unity.Editor
                     600);
             }
             else
-            {
                 defaultDurationProperty.intValue = 0;
-            }
 
-            bool hasQuantity = maxQuantityProperty.longValue > 1;
-            bool showMaxQuantity = EditorGUILayout.Toggle("Quantity Effect", hasQuantity);
-
-            if (showMaxQuantity)
+            hasQuantity = EditorGUILayout.Toggle("Quantity Effect", hasQuantity);
+            if (hasQuantity)
             {
                 if (maxQuantityProperty.longValue < 1)
                     maxQuantityProperty.longValue = 1;
@@ -58,9 +55,7 @@ namespace CrowdControl.Client.Unity.Editor
                     10_000);
             }
             else
-            {
                 maxQuantityProperty.longValue = 1;
-            }
 
             serializedObject.ApplyModifiedProperties();
 
