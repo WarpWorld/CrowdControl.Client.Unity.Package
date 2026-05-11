@@ -67,11 +67,16 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
         public bool AutoConnect = false;
 
+        /// <summary>Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.</summary>
+        [SerializeField]
+        [Tooltip("Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.")]
+        public bool AutoReconnect = true;
+
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
         [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
-        public bool WaitForPingResponse = false;
+        public bool WaitForPingResponse = true;
 
         /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
         [SerializeField]
@@ -247,8 +252,13 @@ namespace CrowdControl.Client.Unity
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
 
+            CrowdControl.AutoReconnect = AutoReconnect;
             CrowdControl.Connect();
+            RefreshJWT();
+        }
 
+        private void RefreshJWT()
+        {
             if (CrowdControl.IsTokenValid())
             {
                 Log.Debug("Valid JWT token found, attempting to start session...");
