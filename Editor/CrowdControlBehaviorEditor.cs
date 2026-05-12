@@ -46,6 +46,12 @@ namespace CrowdControl.Client.Unity.Editor
                         behavior.ClearToken();
                 }
 
+                using (new EditorGUI.DisabledScope((!Application.isPlaying) || (!behavior.isActiveAndEnabled)))
+                {
+                    if (GUILayout.Button("Launch Interact Link"))
+                        behavior.LaunchInteractLink();
+                }
+
                 EditorGUILayout.Space();
 
                 UnityEffectLoader effectLoader = FindFirstObjectByType<UnityEffectLoader>();

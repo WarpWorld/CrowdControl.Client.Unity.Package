@@ -11,10 +11,53 @@ namespace CrowdControl.Client.Unity.Editor
     {
         private int testQuantity = 1;
 
+        private bool isTimed;
+        private bool hasQuantity;
+
         /// <summary>Custom inspector GUI that adds buttons to test each effect ID during play mode.</summary>
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
+            serializedObject.Update();
+
+            SerializedProperty defaultDurationProperty = serializedObject.FindProperty(nameof(UnityEffectBase.DefaultDuration));
+            SerializedProperty maxQuantityProperty = serializedObject.FindProperty(nameof(UnityEffectBase.MaxQuantity));
+
+            using (new EditorGUI.DisabledScope(true))
+                EditorGUILayout.ObjectField("Script", MonoScript.FromMonoBehaviour((UnityEffectBase)target), typeof(UnityEffectBase), false);
+
+            DrawPropertiesExcluding(serializedObject, "m_Script", nameof(UnityEffectBase.DefaultDuration), nameof(UnityEffectBase.MaxQuantity));
+
+            isTimed = EditorGUILayout.Toggle("Timed Effect", isTimed);
+            if (isTimed)
+            {
+                if (defaultDurationProperty.intValue < 1)
+                    defaultDurationProperty.intValue = 1;
+
+                defaultDurationProperty.intValue = EditorGUILayout.IntSlider(
+                    new GUIContent(defaultDurationProperty.displayName, defaultDurationProperty.tooltip),
+                    defaultDurationProperty.intValue,
+                    1,
+                    600);
+            }
+            else
+                defaultDurationProperty.intValue = 0;
+
+            hasQuantity = EditorGUILayout.Toggle("Quantity Effect", hasQuantity);
+            if (hasQuantity)
+            {
+                if (maxQuantityProperty.longValue < 1)
+                    maxQuantityProperty.longValue = 1;
+
+                maxQuantityProperty.longValue = EditorGUILayout.IntSlider(
+                    new GUIContent(maxQuantityProperty.displayName, maxQuantityProperty.tooltip),
+                    (int)maxQuantityProperty.longValue,
+                    1,
+                    10_000);
+            }
+            else
+                maxQuantityProperty.longValue = 1;
+
+            serializedObject.ApplyModifiedProperties();
 
             if (!Application.isPlaying)
                 return;
@@ -27,7 +70,7 @@ namespace CrowdControl.Client.Unity.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Testing", EditorStyles.boldLabel);
 
-            if (maxQuantity < 1)
+            if (maxQuantity <= 1)
                 testQuantity = 1;
             else
                 testQuantity = EditorGUILayout.IntSlider("Quantity", Mathf.Clamp(testQuantity, 1, maxTestQuantity), 1, maxTestQuantity);

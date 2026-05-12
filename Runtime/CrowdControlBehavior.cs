@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using CrowdControl.Common;
+using UnityEngine.Serialization;
 
 namespace CrowdControl.Client.Unity
 {
@@ -31,10 +32,11 @@ namespace CrowdControl.Client.Unity
         [Tooltip("The application identifier used for authentication with the Crowd Control service.")]
         public string ApplicationID;
 
-        /// <summary>The application secret used for authentication with the Crowd Control service.</summary>
+        /// <summary>The public client key used for authentication with the Crowd Control service.</summary>
         [SerializeField]
-        [Tooltip("The application secret used for authentication with the Crowd Control service.")]
-        public string ApplicationSecret;
+        [FormerlySerializedAs("ApplicationSecret")]
+        [Tooltip("The public client key used for authentication with the Crowd Control service.")]
+        public string PublicClientKey;
 
         /// <summary>Component that provides the current <see cref="WebSocket.GameState"/> to Crowd Control.</summary>
         [SerializeField]
@@ -65,11 +67,16 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
         public bool AutoConnect = false;
 
+        /// <summary>Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.</summary>
+        [SerializeField]
+        [Tooltip("Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.")]
+        public bool AutoReconnect = true;
+
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
         [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
-        public bool WaitForPingResponse = false;
+        public bool WaitForPingResponse = true;
 
         /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
         [SerializeField]
@@ -219,7 +226,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, ApplicationSecret, m_jwt);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, PublicClientKey, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
@@ -245,8 +252,13 @@ namespace CrowdControl.Client.Unity
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
 
+            CrowdControl.AutoReconnect = AutoReconnect;
             CrowdControl.Connect();
+            RefreshJWT();
+        }
 
+        private void RefreshJWT()
+        {
             if (CrowdControl.IsTokenValid())
             {
                 Log.Debug("Valid JWT token found, attempting to start session...");
@@ -261,6 +273,34 @@ namespace CrowdControl.Client.Unity
                 Log.Debug("No valid JWT token found, requesting authentication code...");
                 CrowdControl.GetAuthCode().Forget();
             }
+        }
+
+        /// <summary>Launches the interact link URL in the user's default web browser.</summary>
+        public void LaunchInteractLink()
+        {
+            if (CrowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot launch interact link.");
+                return;
+            }
+            string? url = CrowdControl.GetInteractLink();
+            if (string.IsNullOrEmpty(url))
+            {
+                Debug.LogError("Failed to get interact link from Crowd Control.");
+                return;
+            }
+            Application.OpenURL(url);
+        }
+
+        /// <summary>Gets the interact link URL from the Crowd Control client.</summary>
+        public string? GetInteractLink()
+        {
+            if (CrowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot get interact link.");
+                return null;
+            }
+            return CrowdControl.GetInteractLink();
         }
 
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
