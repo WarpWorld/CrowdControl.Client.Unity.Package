@@ -275,6 +275,34 @@ namespace CrowdControl.Client.Unity
             }
         }
 
+        /// <summary>Launches the interact link URL in the user's default web browser.</summary>
+        public void LaunchInteractLink()
+        {
+            if (CrowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot launch interact link.");
+                return;
+            }
+            string? url = CrowdControl.GetInteractLink();
+            if (string.IsNullOrEmpty(url))
+            {
+                Debug.LogError("Failed to get interact link from Crowd Control.");
+                return;
+            }
+            Application.OpenURL(url);
+        }
+
+        /// <summary>Gets the interact link URL from the Crowd Control client.</summary>
+        public string? GetInteractLink()
+        {
+            if (CrowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot get interact link.");
+                return null;
+            }
+            return CrowdControl.GetInteractLink();
+        }
+
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
 
