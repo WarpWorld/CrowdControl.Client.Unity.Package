@@ -15,13 +15,12 @@ namespace CrowdControl.Client.Unity.Editor
         private readonly Dictionary<string, string> testOptionValues = new();
         private readonly Dictionary<string, Color> testColorValues = new();
 
-        private bool isTimed;
-        private bool hasQuantity;
-
         /// <summary>Custom inspector GUI that adds buttons to test each effect ID during play mode.</summary>
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
+
+            UnityEffectBase effect = (UnityEffectBase)target;
 
             SerializedProperty defaultDurationProperty = serializedObject.FindProperty(nameof(UnityEffectBase.DefaultDuration));
             SerializedProperty maxQuantityProperty = serializedObject.FindProperty(nameof(UnityEffectBase.MaxQuantity));
@@ -31,7 +30,7 @@ namespace CrowdControl.Client.Unity.Editor
 
             DrawPropertiesExcluding(serializedObject, "m_Script", nameof(UnityEffectBase.DefaultDuration), nameof(UnityEffectBase.MaxQuantity));
 
-            isTimed = EditorGUILayout.Toggle("Timed Effect", isTimed);
+            bool isTimed = EditorGUILayout.Toggle("Timed Effect", defaultDurationProperty.intValue > 0);
             if (isTimed)
             {
                 if (defaultDurationProperty.intValue < 1)
@@ -46,7 +45,7 @@ namespace CrowdControl.Client.Unity.Editor
             else
                 defaultDurationProperty.intValue = 0;
 
-            hasQuantity = EditorGUILayout.Toggle("Quantity Effect", hasQuantity);
+            bool hasQuantity = EditorGUILayout.Toggle("Quantity Effect", maxQuantityProperty.longValue > 1);
             if (hasQuantity)
             {
                 if (maxQuantityProperty.longValue < 1)
@@ -66,7 +65,6 @@ namespace CrowdControl.Client.Unity.Editor
             if (!Application.isPlaying)
                 return;
 
-            UnityEffectBase effect = (UnityEffectBase)target;
             string effectID = effect.EffectID;
             uint maxQuantity = effect.MaxQuantity;
             int maxTestQuantity = maxQuantity > int.MaxValue ? int.MaxValue : (int)maxQuantity;
