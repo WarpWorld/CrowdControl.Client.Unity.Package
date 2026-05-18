@@ -1,5 +1,6 @@
 ﻿#if UNITY_EDITOR
 using System.Collections.Generic;
+using CrowdControl.Client.WebSocket;
 using CrowdControl.Common;
 using UnityEditor;
 using UnityEngine;
@@ -80,7 +81,7 @@ namespace CrowdControl.Client.Unity.Editor
 
             DrawTestParameters(effect.Parameters);
 
-            if (GUILayout.Button("Test " + effectID))
+            if (GUILayout.Button("Test " + effect.Name))
             {
                 uint quantity = (uint)testQuantity;
 
@@ -93,10 +94,24 @@ namespace CrowdControl.Client.Unity.Editor
 
                 if (effect.IsTimed)
                 {
-                    Log.Debug("Testing timed effects in the editor is not currently supported.");
-                    //Log.Debug("Starting timed effect: " + effectID);
-                    //effect.StartEffect(request);
-                    //EditorCoroutineUtility.StartCoroutineOwnerless(StopEffectCoroutine(effect, request));
+                    //Log.Debug("Testing timed effects in the editor is not currently supported.");
+                    CrowdControlBehavior crowdControl = FindAnyObjectByType<CrowdControlBehavior>();
+                    if (!crowdControl)
+                    {
+                        Log.Debug("No CrowdControlBehavior found in the scene. Please add one to test timed effects.");
+                        return;
+                    }
+
+                    Scheduler scheduler;
+                    try { scheduler = crowdControl.Scheduler; }
+                    catch
+                    {
+                        Log.Debug("Unable to access Scheduler from CrowdControlBehavior. Please ensure it is properly initialized to test timed effects.");
+                        return;
+                    }
+
+                    Log.Debug("Starting timed effect: " + effectID);
+                    scheduler.Enqueue(request, effect);
                 }
                 else
                 {
@@ -197,12 +212,6 @@ namespace CrowdControl.Client.Unity.Editor
 
             return (values.Count > 0) ? new ParameterResults(values) : ParameterResults.Empty;
         }
-
-        /*private IEnumerator StopEffectCoroutine(UnityEffectBase effect, EffectRequest request)
-        {
-            yield return new EditorWaitForSeconds((float)request.Duration.TotalSeconds);
-            effect.StopEffect(request);
-        }*/
     }
 }
 #endif

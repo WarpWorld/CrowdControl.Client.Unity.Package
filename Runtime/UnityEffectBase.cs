@@ -1,7 +1,8 @@
-using System;
-using System.Collections.Generic;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
