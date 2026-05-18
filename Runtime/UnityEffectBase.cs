@@ -1,7 +1,8 @@
-using System;
-using System.Collections.Generic;
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -84,6 +85,16 @@ namespace CrowdControl.Client.Unity
         /// Gets a value indicating whether the effect is time-based and thus supports ticking.
         /// </summary>
         public bool IsTimed => DefaultDuration > 0;
+
+        /// <summary>
+        /// Gets a value indicating whether the effect has quantity.
+        /// </summary>
+        public bool HasQuantity => MaxQuantity > 1;
+
+        /// <summary>
+        /// Gets a value indicating whether the effect has parameters.
+        /// </summary>
+        public bool HasParameters => (Parameters != null) && (Parameters.Length > 0);
 
         /// <summary>
         /// Gets the owning Crowd Control instance.
