@@ -1,4 +1,5 @@
 ﻿#if UNITY_EDITOR
+using System.Collections.Generic;
 using CrowdControl.Common;
 using UnityEditor;
 using UnityEngine;
@@ -10,6 +11,8 @@ namespace CrowdControl.Client.Unity.Editor
     public class UnityEffectBaseEditor : UnityEditor.Editor
     {
         private int testQuantity = 1;
+        private readonly Dictionary<string, string> testOptionValues = new();
+        private readonly Dictionary<string, Color> testColorValues = new();
 
         private bool isTimed;
         private bool hasQuantity;
@@ -70,10 +73,12 @@ namespace CrowdControl.Client.Unity.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Testing", EditorStyles.boldLabel);
 
-            if (maxQuantity <= 1)
-                testQuantity = 1;
-            else
+            if (effect.HasQuantity)
                 testQuantity = EditorGUILayout.IntSlider("Quantity", Mathf.Clamp(testQuantity, 1, maxTestQuantity), 1, maxTestQuantity);
+            else
+                testQuantity = 1;
+
+            DrawTestParameters(effect.Parameters);
 
             if (GUILayout.Button("Test " + effectID))
             {
@@ -81,6 +86,10 @@ namespace CrowdControl.Client.Unity.Editor
 
                 EffectRequest request = new(effectID);
                 request.Quantity = quantity;
+
+                ParameterResults parameters = BuildTestParameters(effect.Parameters);
+                if (parameters.Count > 0)
+                    request.Parameters = parameters;
 
                 if (effect.IsTimed)
                 {
@@ -95,6 +104,98 @@ namespace CrowdControl.Client.Unity.Editor
                     effect.StartEffect(request);
                 }
             }
+        }
+
+        private void DrawTestParameters(ParameterDef[]? parameters)
+        {
+            if ((parameters == null) || (parameters.Length == 0))
+                return;
+
+            foreach (ParameterDef parameter in parameters)
+            {
+                switch (parameter.Type)
+                {
+                    case ParameterBase.ParameterType.Options:
+                        DrawOptionTestParameter(parameter);
+                        break;
+                    case ParameterBase.ParameterType.HexColor:
+                        DrawColorTestParameter(parameter);
+                        break;
+                }
+            }
+        }
+
+        private void DrawOptionTestParameter(ParameterDef parameter)
+        {
+            if ((parameter.Options == null) || (parameter.Options.Count == 0))
+                return;
+
+            int selectedIndex = GetSelectedOptionIndex(parameter);
+            string[] displayedOptions = new string[parameter.Options.Count];
+            for (int i = 0; i < parameter.Options.Count; i++)
+                displayedOptions[i] = parameter.Options[i].Name;
+
+            int updatedIndex = EditorGUILayout.Popup(parameter.Name, selectedIndex, displayedOptions);
+            testOptionValues[parameter.ID] = parameter.Options[updatedIndex].ID;
+        }
+
+        private void DrawColorTestParameter(ParameterDef parameter)
+        {
+            if (!testColorValues.TryGetValue(parameter.ID, out Color value))
+                value = Color.white;
+
+            testColorValues[parameter.ID] = EditorGUILayout.ColorField(parameter.Name, value);
+        }
+
+        private int GetSelectedOptionIndex(ParameterDef parameter)
+        {
+            if ((parameter.Options == null) || (parameter.Options.Count == 0))
+                return 0;
+
+            if (testOptionValues.TryGetValue(parameter.ID, out string selectedID))
+            {
+                for (int i = 0; i < parameter.Options.Count; i++)
+                {
+                    if (parameter.Options[i].ID == selectedID)
+                        return i;
+                }
+            }
+
+            testOptionValues[parameter.ID] = parameter.Options[0].ID;
+            return 0;
+        }
+
+        private ParameterResults BuildTestParameters(ParameterDef[]? parameters)
+        {
+            if ((parameters == null) || (parameters.Length == 0))
+                return ParameterResults.Empty;
+
+            List<IParameterValue> values = new();
+            foreach (ParameterDef parameter in parameters)
+            {
+                switch (parameter.Type)
+                {
+                    case ParameterBase.ParameterType.Options:
+                    {
+                        if ((parameter.Options == null) || (parameter.Options.Count == 0))
+                            continue;
+
+                        int selectedIndex = GetSelectedOptionIndex(parameter);
+                        values.Add(new ParameterValue<string>(parameter.Name, parameter.ID, parameter.Options[selectedIndex].ID));
+                        break;
+                    }
+                    case ParameterBase.ParameterType.HexColor:
+                    {
+                        if (!testColorValues.TryGetValue(parameter.ID, out Color color))
+                            color = Color.white;
+
+                        values.Add(new ParameterColor(parameter.Name, parameter.ID, "#" + ColorUtility.ToHtmlStringRGBA(color)));
+                        break;
+                    }
+                }
+            }
+
+            return (values.Count > 0) ? new ParameterResults(values) : ParameterResults.Empty;
         }
 
         /*private IEnumerator StopEffectCoroutine(UnityEffectBase effect, EffectRequest request)

@@ -86,6 +86,16 @@ namespace CrowdControl.Client.Unity
         public bool IsTimed => DefaultDuration > 0;
 
         /// <summary>
+        /// Gets a value indicating whether the effect has quantity.
+        /// </summary>
+        public bool HasQuantity => MaxQuantity > 1;
+
+        /// <summary>
+        /// Gets a value indicating whether the effect has parameters.
+        /// </summary>
+        public bool HasParameters => (Parameters != null) && (Parameters.Length > 0);
+
+        /// <summary>
         /// Gets the owning Crowd Control instance.
         /// </summary>
         public WebSocket.CrowdControl CrowdControl => CrowdControlBehavior.CrowdControl;
