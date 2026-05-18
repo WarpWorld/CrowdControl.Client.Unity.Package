@@ -264,7 +264,7 @@ namespace CrowdControl.Client.Unity
                 Log.Debug("Valid JWT token found, attempting to start session...");
                 Task.Run(async () =>
                 {
-                    if (!(await CrowdControl.StartSession()))
+                    if (!(await CrowdControl.StartSession(false)))
                         await CrowdControl.GetAuthCode();
                 }).Forget();
             }
