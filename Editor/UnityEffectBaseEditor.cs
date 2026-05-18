@@ -109,6 +109,7 @@ namespace CrowdControl.Client.Unity.Editor
                     }
 
                     Log.Debug("Starting timed effect: " + effectID);
+                    request.Duration = effect.DefaultDuration;
                     scheduler.Enqueue(request, effect);
                 }
                 else
