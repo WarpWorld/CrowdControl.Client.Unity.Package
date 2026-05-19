@@ -75,6 +75,13 @@ namespace CrowdControl.Client.Unity
         uint IEffect.MaxQuantity => MaxQuantity;
 
         /// <summary>
+        /// Gets a value indicating whether the effect is custom and needs to be loaded dynamically.
+        /// </summary>
+        [SerializeField, Tooltip("Indicates whether the effect is custom and needs to be loaded dynamically.")]
+        public bool IsCustom;
+        bool IEffect.IsCustom => IsCustom;
+
+        /// <summary>
         /// Gets the collection of parameter types associated with this instance.
         /// </summary>
         [SerializeField, Tooltip("The collection of parameter types associated with this effect.")]

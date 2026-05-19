@@ -80,7 +80,7 @@ namespace CrowdControl.Client.Unity.Editor
 
                         foreach (UnityEffectBase item in effectLoader.Effects.Values)
                         {
-                            JObject nextItem = new JObject
+                            JObject nextItem = new()
                             {
                                 //["id"] = item.EffectID,
                                 ["name"] = item.name,
