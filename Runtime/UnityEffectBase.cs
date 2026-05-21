@@ -170,7 +170,7 @@ namespace CrowdControl.Client.Unity
             JObject nextItem = new()
             {
                 //["id"] = EffectID,
-                ["name"] = name,
+                ["name"] = Name,
                 ["description"] = Description,
                 ["price"] = DefaultPrice,
                 ["conflicts"] = JArray.FromObject(Conflicts),
