@@ -582,6 +582,27 @@ namespace CrowdControl.Client.Unity
         public bool StopAllEffects() => CrowdControl?.Scheduler.StopAll() ?? false;
 
         public void UpdateCustomEffects()
-            => CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge).Forget();
+        {
+            WebSocket.CrowdControl? crowdControl = CrowdControl;
+            if (crowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot update custom effects.");
+                return;
+            }
+
+            UnityEffectLoader? effectLoader = EffectLoader;
+            if (!effectLoader)
+            {
+                Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before updating custom effects.");
+                return;
+            }
+
+            Task.Run(async () =>
+            {
+                bool success = await crowdControl.LoadCustomEffects(effectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge);
+                if (success) Debug.Log("Custom effects updated successfully.");
+                else Debug.LogError("Failed to update custom effects.");
+            });
+        }
     }
 }
