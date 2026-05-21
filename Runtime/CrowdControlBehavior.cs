@@ -582,9 +582,6 @@ namespace CrowdControl.Client.Unity
         public bool StopAllEffects() => CrowdControl?.Scheduler.StopAll() ?? false;
 
         public void UpdateCustomEffects()
-        {
-            CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge);
-            
-        }
+            => CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge).Forget();
     }
 }
