@@ -1,5 +1,6 @@
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Common;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -163,16 +164,34 @@ namespace CrowdControl.Client.Unity
         public virtual EffectStatus? StopEffect(EffectRequest request) => null;
         EffectStatus? IEffect.Stop(EffectRequest request) => StopEffect(request);
 
-        /// <summary>Converts this effect instance into a serializable <see cref="Effect"/> object for menu file generation.</summary>
-        public Effect ToEffect()
+        /// <summary>Converts this effect instance into a serializable object.</summary>
+        public JObject ToJObject()
         {
-            Effect result = new Effect(Name, EffectID);
+            JObject nextItem = new()
+            {
+                //["id"] = EffectID,
+                ["name"] = name,
+                ["description"] = Description,
+                ["price"] = DefaultPrice,
+                ["conflicts"] = JArray.FromObject(Conflicts),
+                ["alignment"] = JObject.FromObject(new Alignment(Orderliness, Morality)) //do not simplify syntax here, it appears to not build consistently depending on unity version and/or build settings - kat
+            };
 
-            result.Alignment = (Alignment)Morality + Orderliness;
-            result.Duration = DefaultDuration;
-            result.Description = Description;
+            if (IsTimed)
+                nextItem["duration"] = new JObject { ["value"] = DefaultDuration };
 
-            return result;
+            if (MaxQuantity > 1)
+                nextItem["quantity"] = new JObject
+                {
+                    ["min"] = 1,
+                    ["max"] = MaxQuantity
+                };
+
+            ParameterList? parameters = ((IEffect)this).Parameters;
+            if (parameters != null)
+                nextItem["parameters"] = JObject.FromObject(parameters);
+
+            return nextItem;
         }
     }
 }
