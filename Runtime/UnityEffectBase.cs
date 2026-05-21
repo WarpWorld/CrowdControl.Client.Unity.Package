@@ -78,8 +78,8 @@ namespace CrowdControl.Client.Unity
         /// Gets a value indicating whether the effect is custom and needs to be loaded dynamically.
         /// </summary>
         [SerializeField, Tooltip("Indicates whether the effect is custom and needs to be loaded dynamically.")]
-        public bool IsCustom;
-        bool IEffect.IsCustom => IsCustom;
+        public bool CustomEffect;
+        bool IEffect.IsCustom => CustomEffect;
 
         /// <summary>
         /// Gets the collection of parameter types associated with this instance.
