@@ -362,7 +362,12 @@ namespace CrowdControl.Client.Unity
             if (AutoAddCustomEffects && EffectLoader)
             {
                 Log.Debug("Auto-adding custom effects...");
-                CrowdControl?.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.ReplacePartial);
+                Task.Run(async () =>
+                {
+                    bool success = await CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.ReplacePartial);
+                    if (success) Debug.Log("Custom effects updated successfully.");
+                    else Debug.LogError("Failed to update custom effects.");
+                }).Forget();
             }
         }
 
@@ -602,7 +607,7 @@ namespace CrowdControl.Client.Unity
                 bool success = await crowdControl.LoadCustomEffects(effectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge);
                 if (success) Debug.Log("Custom effects updated successfully.");
                 else Debug.LogError("Failed to update custom effects.");
-            });
+            }).Forget();
         }
     }
 }
