@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
+using UnityEditorInternal.Profiling.Memory.Experimental;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity.Editor
@@ -80,30 +81,7 @@ namespace CrowdControl.Client.Unity.Editor
 
                         foreach (UnityEffectBase item in effectLoader.Effects.Values)
                         {
-                            JObject nextItem = new JObject
-                            {
-                                //["id"] = item.EffectID,
-                                ["name"] = item.name,
-                                ["description"] = item.Description,
-                                ["price"] = item.DefaultPrice,
-                                ["conflicts"] = JArray.FromObject(item.Conflicts),
-                                ["alignment"] = JObject.FromObject(new Alignment(item.Orderliness, item.Morality)) //do not simplify syntax here, it appears to not build consistently depending on unity version and/or build settings - kat
-                            };
-
-                            if (item.IsTimed)
-                                nextItem["duration"] = new JObject { ["value"] = item.DefaultDuration };
-
-                            if (item.MaxQuantity > 1)
-                                nextItem["quantity"] = new JObject
-                                {
-                                    ["min"] = 1,
-                                    ["max"] = item.MaxQuantity
-                                };
-
-                            ParameterList? parameters = ((IEffect)item).Parameters;
-                            if (parameters != null)
-                                nextItem["parameters"] = JObject.FromObject(parameters);
-
+                            JObject nextItem = item.ToJObject();
                             effects_game[item.EffectID] = nextItem;
                         }
 

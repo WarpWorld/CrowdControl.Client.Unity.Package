@@ -73,6 +73,11 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.")]
         public bool AutoReconnect = true;
 
+        /// <summary>Whether to automatically add custom effects defined in the EffectLoader to the service on startup.</summary>
+        [SerializeField]
+        [Tooltip("Whether to automatically add custom effects defined in the EffectLoader to the service on startup.")]
+        public bool AutoAddCustomEffects = true;
+
         /// <summary>Whether to block on ping responses.</summary>
         /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
         [SerializeField]
@@ -354,6 +359,16 @@ namespace CrowdControl.Client.Unity
                 SessionReady.InvokeSafe();
                 SessionReadyEvent?.Invoke();
             }, null);
+            if (AutoAddCustomEffects && EffectLoader)
+            {
+                Log.Debug("Auto-adding custom effects...");
+                Task.Run(async () =>
+                {
+                    bool success = await CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.ReplacePartial);
+                    if (success) Debug.Log("Custom effects updated successfully.");
+                    else Debug.LogError("Failed to update custom effects.");
+                }).Forget();
+            }
         }
 
         /// <summary>UnityEvent invoked when the Crowd Control session has ended. This can be used to trigger in-game responses to the session ending.</summary>
@@ -562,19 +577,37 @@ namespace CrowdControl.Client.Unity
         }
     
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>
-        void FixedUpdate()
-        {
-            CrowdControl?.Update(Time.time, Time.deltaTime);
-        }
-    
+        void FixedUpdate() => CrowdControl?.Update(Time.time, Time.deltaTime);
+
         /// <summary>Unity callback invoked when the component is destroyed; ensures disposal.</summary>
         void OnDestroy() => Dispose();
 
         /// <summary>This method attempts to stop all running effects via the Crowd Control effect scheduler.</summary>
         /// <remarks>This will return false if any of the effect stop functions throw an exception.</remarks>
-        public bool StopAllEffects()
+        public bool StopAllEffects() => CrowdControl?.Scheduler.StopAll() ?? false;
+
+        public void UpdateCustomEffects()
         {
-            return CrowdControl?.Scheduler.StopAll() ?? false;
+            WebSocket.CrowdControl? crowdControl = CrowdControl;
+            if (crowdControl == null)
+            {
+                Debug.LogError("CrowdControlBehavior is not connected! Cannot update custom effects.");
+                return;
+            }
+
+            UnityEffectLoader? effectLoader = EffectLoader;
+            if (!effectLoader)
+            {
+                Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before updating custom effects.");
+                return;
+            }
+
+            Task.Run(async () =>
+            {
+                bool success = await crowdControl.LoadCustomEffects(effectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge);
+                if (success) Debug.Log("Custom effects updated successfully.");
+                else Debug.LogError("Failed to update custom effects.");
+            }).Forget();
         }
     }
 }
