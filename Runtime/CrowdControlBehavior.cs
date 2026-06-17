@@ -394,6 +394,7 @@ namespace CrowdControl.Client.Unity
                 SessionEnded.InvokeSafe();
                 SessionEndedEvent?.Invoke();
             }, null);
+            StopAllEffects().Forget();
         }
 
         /// <summary>UnityEvent invoked whenever an authentication code is received from the Crowd Control service. This can be used to trigger in-game responses to authentication events.</summary>
@@ -584,8 +585,24 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>This method attempts to stop all running effects via the Crowd Control effect scheduler.</summary>
         /// <remarks>This will return false if any of the effect stop functions throw an exception.</remarks>
-        public bool StopAllEffects() => CrowdControl?.Scheduler.StopAll() ?? false;
+        public Task<bool> StopAllEffects()
+        {
+            TaskCompletionSource<bool> tcs = new();
+            m_synchronizationContext?.Post(_ =>
+            {
+                bool result = CrowdControl?.Scheduler.StopAll() ?? false;
+                tcs.SetResult(result);
+            }, null);
+            return tcs.Task;
+        }
 
+        /// <summary>
+        /// Updates custom effects in the Crowd Control system by loading effects from the configured effect loader
+        /// using merge mode.
+        /// </summary>
+        /// <remarks>This operation runs asynchronously and requires both a valid Crowd Control connection
+        /// and an assigned EffectLoader. If either prerequisite is not met, an error is logged and no update is
+        /// performed. Only custom effects are included in the update.</remarks>
         public void UpdateCustomEffects()
         {
             WebSocket.CrowdControl? crowdControl = CrowdControl;
