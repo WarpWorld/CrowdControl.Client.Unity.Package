@@ -188,7 +188,7 @@ namespace CrowdControl.Client.Unity
                 enabled = false;
                 return;
             }
-        
+
             if (!EffectLoader)
             {
                 Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before enabling the CrowdControl Behavior.");
@@ -223,7 +223,7 @@ namespace CrowdControl.Client.Unity
 
             OnSessionEnded();
         }
-        
+
         /// <summary>Initializes and connects the Crowd Control client.</summary>
         public void Connect()
         {
@@ -536,7 +536,7 @@ namespace CrowdControl.Client.Unity
         public event Action<EffectState>? EffectUpdate;
         public event Action<IEnumerable<KeyValuePair<string, object?>>>? MetadataChanged;
 
-        private void OnEffectResponseSent(EffectRequest effectRequest, EffectResponse effectResponse)
+        private void OnEffectResponseSent(EffectRequest effectRequest, Common.EffectResponse effectResponse)
         {
             if (CrowdControl == null) return;
             if (!CrowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
@@ -547,7 +547,7 @@ namespace CrowdControl.Client.Unity
                 EffectUpdateEvent?.Invoke(state);
             }, null);
         }
-        
+
         private void OnEffectReportSent(EffectReport effectReport) { }
 
         /// <summary>Sends a ping to the Crowd Control service and logs the result.</summary>
@@ -569,14 +569,14 @@ namespace CrowdControl.Client.Unity
             {
                 result.ContinueWith(t => printResult(t.Result));
             }
-            
+
             void printResult(bool success)
             {
                 if (success) Debug.Log($"Ping response received.");
-                else Debug.LogError("Ping failed to receive a response.");   
+                else Debug.LogError("Ping failed to receive a response.");
             }
         }
-    
+
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>
         void FixedUpdate() => CrowdControl?.Update(Time.time, Time.deltaTime);
 
@@ -626,5 +626,57 @@ namespace CrowdControl.Client.Unity
                 else Debug.LogError("Failed to update custom effects.");
             }).Forget();
         }
+
+        #region Show Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowEffects(string[])"/>
+        public Task<bool> ShowEffects(params string[] codes) => CrowdControl?.ShowEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> ShowEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.ShowEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowAllEffects(string?)"/>
+        public Task<bool> ShowAllEffects(string? message = null) => CrowdControl?.ShowAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Hide Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideEffects(string[])"/>
+        public Task<bool> HideEffects(params string[] codes) => CrowdControl?.HideEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> HideEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.HideEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideAllEffects(string?)"/>
+        public Task<bool> HideAllEffects(string? message = null) => CrowdControl?.HideAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Enable Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableEffects(string[])"/>
+        public Task<bool> EnableEffects(params string[] codes) => CrowdControl?.EnableEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> EnableEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.EnableEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableAllEffects(string?)"/>
+        public Task<bool> EnableAllEffects(string? message = null) => CrowdControl?.EnableAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Disable Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableEffects(string[])"/>
+        public Task<bool> DisableEffects(params string[] codes) => CrowdControl?.DisableEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> DisableEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.DisableEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableAllEffects(string?)"/>
+        public Task<bool> DisableAllEffects(string? message = null) => CrowdControl?.DisableAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
     }
 }

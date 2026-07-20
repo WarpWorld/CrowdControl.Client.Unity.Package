@@ -137,33 +137,26 @@ namespace CrowdControl.Client.Unity
             CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
         }
 
-        /// <summary>Starts an effect in response to an effect request.</summary>
-        /// <param name="request">The effect request to handle.</param>
-        /// <returns>An <see cref="EffectStatus"/> indicating the result of the operation.</returns>
-        public abstract EffectStatus StartEffect(EffectRequest request);
-        EffectStatus IEffect.Start(EffectRequest request) => StartEffect(request);
+        /// <inheritdoc cref="IEffect.Start"/>
+        public abstract WebSocket.EffectResponse StartEffect(EffectRequest request);
+        WebSocket.EffectResponse IEffect.Start(EffectRequest request) => StartEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Performs an update tick for a timed effect.</summary>
-        public virtual EffectStatus? TickEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Tick(EffectRequest request) => TickEffect(request);
+        /// <inheritdoc cref="IEffect.Tick"/>
+        public virtual WebSocket.EffectResponse? TickEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Tick(EffectRequest request) => TickEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Pauses a timed effect.</summary>
-        public virtual EffectStatus? PauseEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Pause(EffectRequest request) => PauseEffect(request);
+        /// <inheritdoc cref="IEffect.Pause"/>
+        public virtual WebSocket.EffectResponse? PauseEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Pause(EffectRequest request) => PauseEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Resumes a paused timed effect.</summary>
-        public virtual EffectStatus? ResumeEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Resume(EffectRequest request) => ResumeEffect(request);
+        /// <inheritdoc cref="IEffect.Resume"/>
+        public virtual WebSocket.EffectResponse? ResumeEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Resume(EffectRequest request) => ResumeEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Stops a running timed effect.</summary>
-        public virtual EffectStatus? StopEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Stop(EffectRequest request) => StopEffect(request);
+        /// <inheritdoc cref="IEffect.Stop"/>
+        public virtual WebSocket.EffectResponse? StopEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Stop(EffectRequest request) => StopEffect(request);
 
-        /// <summary>Converts this effect instance into a serializable object.</summary>
         public JObject ToJObject()
         {
             JObject nextItem = new()
