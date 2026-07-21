@@ -627,6 +627,9 @@ namespace CrowdControl.Client.Unity
             }).Forget();
         }
 
+        /// <inheritdoc cref="WebSocket.CrowdControl.CloneEffect"/>
+        public bool CloneEffect(string sourceEffectID, params string[] destEffectIDs) => CrowdControl?.CloneEffect(sourceEffectID, destEffectIDs) ?? false;
+
         #region Show Effects
 
         /// <inheritdoc cref="WebSocket.CrowdControl.ShowEffects(string[])"/>

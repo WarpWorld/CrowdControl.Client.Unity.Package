@@ -9,7 +9,7 @@ namespace CrowdControl.Client.Unity
 {
     /// <summary>Represents an effect that can be applied to the game.</summary>
     /// <remarks>Effect implementations should inherit from this class.</remarks>
-    public abstract class UnityEffectBase : MonoBehaviour, IEffect
+    public abstract class UnityEffectBase : MonoBehaviour, IEffect, ICloneableEffect
     {
         /// <summary>
         /// The primary effect ID associated with this effect.
@@ -184,6 +184,32 @@ namespace CrowdControl.Client.Unity
                 nextItem["parameters"] = JObject.FromObject(parameters);
 
             return nextItem;
+        }
+
+        /// <summary>
+        /// Clones the current effect instance with a new effect ID.
+        /// </summary>
+        /// <param name="newEffectID">The new effect ID to assign to the cloned effect.</param>
+        /// <returns>A new instance of <see cref="UnityEffectBase"/> with the specified effect ID.</returns>
+        public virtual UnityEffectBase Clone(string newEffectID)
+        {
+            if (string.IsNullOrWhiteSpace(newEffectID))
+                throw new ArgumentException("New effect IDs may not be null or whitespace.", nameof(newEffectID));
+
+            UnityEffectBase clone = Instantiate(this, transform.parent);
+            clone.EffectID = newEffectID;
+            return clone;
+        }
+
+        ICloneableEffect ICloneableEffect.Clone(string[] newEffectIDs)
+        {
+            if (newEffectIDs == null || newEffectIDs.Length == 0)
+                throw new ArgumentException("New effect IDs must be provided for cloning.", nameof(newEffectIDs));
+
+            if (newEffectIDs.Length > 1)
+                throw new ArgumentException("Only one new effect ID can be provided for cloning.", nameof(newEffectIDs));
+
+            return Clone(newEffectIDs[0]);
         }
     }
 }
