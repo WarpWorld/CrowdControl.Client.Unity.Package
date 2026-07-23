@@ -3,6 +3,7 @@ using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -191,6 +192,8 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         /// <param name="newEffectID">The new effect ID to assign to the cloned effect.</param>
         /// <returns>A new instance of <see cref="UnityEffectBase"/> with the specified effect ID.</returns>
+        /// <remarks><b>This method should not be called directly. Use the <see cref="CrowdControlBehavior.CloneEffect"/> method instead.</b></remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)] // Hide from IntelliSense to discourage direct usage.
         public virtual UnityEffectBase Clone(string newEffectID)
         {
             if (string.IsNullOrWhiteSpace(newEffectID))
@@ -201,6 +204,9 @@ namespace CrowdControl.Client.Unity
             return clone;
         }
 
+        /// <inheritdoc cref="ICloneableEffect.Clone(string[])"/>
+        /// <remarks><b>This method should not be called directly. Use the <see cref="CrowdControlBehavior.CloneEffect"/> method instead.</b></remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)] // Hide from IntelliSense to discourage direct usage.
         ICloneableEffect ICloneableEffect.Clone(string[] newEffectIDs)
         {
             if (newEffectIDs == null || newEffectIDs.Length == 0)

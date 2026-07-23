@@ -1,11 +1,9 @@
 #if UNITY_EDITOR
 using CrowdControl.Client.WebSocket.Actions;
-using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEditor;
-using UnityEditorInternal.Profiling.Memory.Experimental;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity.Editor

@@ -3,14 +3,12 @@ using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 
 namespace CrowdControl.Client.Unity
 {
@@ -32,12 +30,6 @@ namespace CrowdControl.Client.Unity
         [SerializeField]
         [Tooltip("The application identifier used for authentication with the Crowd Control service.")]
         public string ApplicationID;
-
-        /// <summary>The public client key used for authentication with the Crowd Control service.</summary>
-        [SerializeField]
-        [FormerlySerializedAs("ApplicationSecret")]
-        [Tooltip("The public client key used for authentication with the Crowd Control service.")]
-        public string PublicClientKey;
 
         /// <summary>Component that provides the current <see cref="WebSocket.GameState"/> to Crowd Control.</summary>
         [SerializeField]
@@ -232,7 +224,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, PublicClientKey, m_jwt);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
