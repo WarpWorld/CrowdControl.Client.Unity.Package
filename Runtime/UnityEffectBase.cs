@@ -13,7 +13,7 @@ namespace CrowdControl.Client.Unity
     /// <remarks>Effect implementations should inherit from this class.</remarks>
     public abstract class UnityEffectBase : MonoBehaviour, IEffect, ICloneableEffect
     {
-        private static readonly Regex MetadataPlaceholderRegex = new(@"\{([^{}]+)\}", RegexOptions.CultureInvariant);
+        private static readonly Regex MetadataPlaceholderRegex = new(@"\{\{([^{}]+)\}\}", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// The primary effect ID associated with this effect.
