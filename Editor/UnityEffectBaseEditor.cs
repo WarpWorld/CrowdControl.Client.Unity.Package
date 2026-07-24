@@ -91,7 +91,7 @@ namespace CrowdControl.Client.Unity.Editor
 
             DrawTestParameters(effect.Parameters);
 
-            if (GUILayout.Button("Test " + effect.Name))
+            if (GUILayout.Button("Test " + effect.DisplayName))
             {
                 uint quantity = (uint)testQuantity;
 

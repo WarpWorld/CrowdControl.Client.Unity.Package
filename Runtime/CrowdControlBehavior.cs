@@ -617,13 +617,28 @@ namespace CrowdControl.Client.Unity
         /// <param name="value">When this method returns, contains the metadata value associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, the default value for <typeparamref name="TValue"/>.</param>
         /// <returns>true if the metadata value was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
         /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
-        public bool TryGetMetadataValue<TValue> (string key, out TValue value)
+        public bool TryGetMetadataValue<TValue>(string key, out TValue value)
         {
             value = default!;
             if (MetadataLoader == null) return false;
             if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
             if (metadata is not IMetadata<TValue> typedMetadata) return false;
             value = typedMetadata.Value;
+            return true;
+        }
+
+        /// <summary>Attempts to retrieve a metadata value from the Crowd Control client.</summary>
+        /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
+        /// <param name="key">The key of the metadata value to retrieve.</param>
+        /// <param name="value">When this method returns, contains the metadata value associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, the default value for <typeparamref name="TValue"/>.</param>
+        /// <returns>true if the metadata value was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
+        /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
+        public bool TryGetMetadataString(string key, out string value)
+        {
+            value = default!;
+            if (MetadataLoader == null) return false;
+            if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
+            value = metadata.Value?.ToString() ?? string.Empty;
             return true;
         }
 

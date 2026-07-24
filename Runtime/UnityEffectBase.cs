@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
@@ -12,6 +13,8 @@ namespace CrowdControl.Client.Unity
     /// <remarks>Effect implementations should inherit from this class.</remarks>
     public abstract class UnityEffectBase : MonoBehaviour, IEffect, ICloneableEffect
     {
+        private static readonly Regex MetadataPlaceholderRegex = new(@"\{([^{}]+)\}", RegexOptions.CultureInvariant);
+
         /// <summary>
         /// The primary effect ID associated with this effect.
         /// </summary>
@@ -25,6 +28,17 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         [SerializeField, Tooltip("The display name associated with this effect.")]
         public string Name = string.Empty;
+
+        /// <summary>
+        /// Gets the display name of the effect, with any metadata placeholders replaced by their corresponding values.
+        /// </summary>
+        public string DisplayName
+        {
+            get => MetadataPlaceholderRegex.Replace(Name, match =>
+                CrowdControlBehavior != null && CrowdControlBehavior.TryGetMetadataString(match.Groups[1].Value, out string metadataValue)
+                    ? metadataValue
+                    : match.Value);
+        }
 
         /// <summary>
         /// A human-readable description of what the effect does.
