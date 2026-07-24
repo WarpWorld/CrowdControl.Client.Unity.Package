@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.Profiling.Memory.Experimental;
 
 namespace CrowdControl.Client.Unity
 {
@@ -37,7 +38,16 @@ namespace CrowdControl.Client.Unity
             {
                 effect.Initialize();
                 foreach (string id in ((IEffect)effect).IDs)
-                    Effects.Add(id, effect);
+                {
+                    if (Effects.TryAdd(id, effect))
+                    {
+                        Log.Debug($"Registered effect: {id}");
+                    }
+                    else
+                    {
+                        Log.Error($"Duplicate effect ID detected: {id}. This entry will be ignored.");
+                    }
+                }
             }
         }
 

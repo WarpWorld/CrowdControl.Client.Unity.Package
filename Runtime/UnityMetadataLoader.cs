@@ -1,4 +1,5 @@
 using CrowdControl.Client.WebSocket.Metadata;
+using CrowdControl.Common;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,7 +25,16 @@ namespace CrowdControl.Client.Unity
             m_loaded = true;
 
             foreach (UnityMetadataBase metadata in GetComponentsInChildren<UnityMetadataBase>())
-                Metadata.Add(metadata.Key, metadata);
+            {
+                if (Metadata.TryAdd(metadata.Key, metadata))
+                {
+                    Log.Debug($"Registered metadata: {metadata.Key}");
+                }
+                else
+                {
+                    Log.Error($"Duplicate metadata key detected: {metadata.Key}. This entry will be ignored.");
+                }
+            }
         }
 
         /// <summary>
