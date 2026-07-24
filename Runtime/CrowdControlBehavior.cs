@@ -590,6 +590,24 @@ namespace CrowdControl.Client.Unity
             return tcs.Task;
         }
 
+        /// <summary>
+        /// Attempts to get a metadata object from the Crowd Control client.
+        /// </summary>
+        /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
+        /// <param name="key">The key of the metadata to retrieve.</param>
+        /// <param name="value">When this method returns, contains the metadata object associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, null.</param>
+        /// <returns>true if the metadata object was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
+        /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
+        public bool TryGetMetadataObject<TValue>(string key, out IMetadata<TValue> value)
+        {
+            value = default!;
+            if (MetadataLoader == null) return false;
+            if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
+            if (metadata is not IMetadata<TValue> typedMetadata) return false;
+            value = typedMetadata;
+            return true;
+        }
+
         /// <summary>Attempts to retrieve a metadata value from the Crowd Control client.</summary>
         /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
         /// <param name="key">The key of the metadata value to retrieve.</param>
