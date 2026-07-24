@@ -35,6 +35,22 @@ namespace CrowdControl.Client.Unity
         /// Raises the Updated event to notify listeners that the metadata has been updated. This method can be called by derived classes when the metadata value changes, allowing external components to react to updates.
         /// </summary>
         protected virtual void OnUpdated() => Updated?.Invoke();
+
+        /// <summary>
+        /// Gets the Crowd Control behavior component that provides access to game state and configuration.
+        /// </summary>
+        public CrowdControlBehavior CrowdControlBehavior { get; private set; }
+
+        /// <summary>
+        /// Unity lifecycle method. Initializes the effect when the GameObject is first loaded. This ensures that the effect is ready to handle requests as soon as it becomes active in the scene.
+        /// </summary>
+        protected virtual void Awake() => CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
+
+        /// <summary>
+        /// Initializes the metadata object by setting up any necessary state or configuration.
+        /// </summary>
+        /// <remarks>This method should be called before using the metadata object to ensure it is properly configured.</remarks>
+        public virtual void Initialize() { }
     }
 
     /// <summary>

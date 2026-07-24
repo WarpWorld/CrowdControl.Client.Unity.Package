@@ -115,28 +115,15 @@ namespace CrowdControl.Client.Unity
         public CrowdControlBehavior CrowdControlBehavior { get; private set; }
 
         /// <summary>
-        /// Indicates whether the effect has been initialized. This is used to prevent multiple initializations in the Unity lifecycle.
-        /// </summary>
-        [NonSerialized]
-        private bool m_initialized;
-
-        /// <summary>
         /// Unity lifecycle method. Initializes the effect when the GameObject is first loaded. This ensures that the effect is ready to handle requests as soon as it becomes active in the scene.
         /// </summary>
-        protected virtual void Awake() => Initialize();
+        protected virtual void Awake() => CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
 
         /// <summary>
-        /// Initializes the effect by setting up its attributes and ensuring it is not decorated with the EffectAttribute.
+        /// Initializes the effect by setting up any necessary state or configuration.
         /// </summary>
-        /// <remarks>This method should be called before using the effect to ensure it is properly configured. Subsequent calls have no effect if the effect is already initialized.</remarks>
-        /// <exception cref="InvalidOperationException">Thrown if the effect class is decorated with the EffectAttribute, which is not allowed for classes inheriting from UnityEffectBase.</exception>
-        public void Initialize()
-        {
-            if (m_initialized) return;
-            m_initialized = true;
-
-            CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
-        }
+        /// <remarks>This method should be called before using the effect to ensure it is properly configured.</remarks>
+        public virtual void Initialize() { }
 
         /// <inheritdoc cref="IEffect.Start"/>
         public abstract WebSocket.EffectResponse StartEffect(EffectRequest request);

@@ -1,3 +1,4 @@
+using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
 using System;
@@ -26,6 +27,7 @@ namespace CrowdControl.Client.Unity
 
             foreach (UnityMetadataBase metadata in GetComponentsInChildren<UnityMetadataBase>())
             {
+                metadata.Initialize();
                 if (Metadata.TryAdd(metadata.Key, metadata))
                 {
                     Log.Debug($"Registered metadata: {metadata.Key}");
