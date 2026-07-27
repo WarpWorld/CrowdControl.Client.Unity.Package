@@ -245,6 +245,7 @@ namespace CrowdControl.Client.Unity
                         PlayerPrefs.Save();
                     }, null);
                 }
+                OnLoginTokenReceived(j);
             };
 
             CrowdControl.SessionReady += OnSessionReady;
