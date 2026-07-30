@@ -34,7 +34,11 @@ namespace CrowdControl.Client.Unity
         /// <summary>
         /// Raises the Updated event to notify listeners that the metadata has been updated. This method can be called by derived classes when the metadata value changes, allowing external components to react to updates.
         /// </summary>
-        protected virtual void OnUpdated() => Updated?.Invoke();
+        protected virtual void OnUpdated()
+        {
+            CrowdControlBehavior?.CrowdControl?.UpdateMetadata(Key, GetUntypedValue());
+            Updated?.Invoke();
+        }
 
         /// <summary>
         /// Gets the Crowd Control behavior component that provides access to game state and configuration.
