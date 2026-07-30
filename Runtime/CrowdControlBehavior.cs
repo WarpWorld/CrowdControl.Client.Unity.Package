@@ -258,6 +258,7 @@ namespace CrowdControl.Client.Unity
 
         private void RefreshJWT()
         {
+            CrowdControl?.RefreshToken();
             if (CrowdControl.IsTokenValid())
             {
                 Log.Debug("Valid JWT token found, attempting to start session...");
