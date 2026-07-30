@@ -11,6 +11,7 @@ namespace CrowdControl.Client.Unity.Editor
     [CustomEditor(typeof(UnityEffectBase), true)]
     public class UnityEffectBaseEditor : UnityEditor.Editor
     {
+        private string newEffectID = string.Empty;
         private int testQuantity = 1;
         private readonly Dictionary<string, string> testOptionValues = new();
         private readonly Dictionary<string, Color> testColorValues = new();
@@ -72,6 +73,17 @@ namespace CrowdControl.Client.Unity.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Testing", EditorStyles.boldLabel);
 
+            using (new EditorGUI.DisabledScope((!effect.isActiveAndEnabled) || (effect.CrowdControl == null)))
+            {
+                newEffectID = EditorGUILayout.TextField("New Effect ID", newEffectID);
+                if (GUILayout.Button("Clone Effect"))
+                {
+                    if (string.IsNullOrWhiteSpace(newEffectID))
+                        Log.Error("New Effect ID cannot be empty.");
+                    effect.CrowdControl!.CloneEffect(effectID, newEffectID);
+                }
+            }
+
             if (effect.HasQuantity)
                 testQuantity = EditorGUILayout.IntSlider("Quantity", Mathf.Clamp(testQuantity, 1, maxTestQuantity), 1, maxTestQuantity);
             else
@@ -79,7 +91,7 @@ namespace CrowdControl.Client.Unity.Editor
 
             DrawTestParameters(effect.Parameters);
 
-            if (GUILayout.Button("Test " + effect.Name))
+            if (GUILayout.Button("Test " + effect.DisplayName))
             {
                 uint quantity = (uint)testQuantity;
 

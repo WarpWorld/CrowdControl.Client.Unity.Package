@@ -3,14 +3,18 @@ using CrowdControl.Common;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace CrowdControl.Client.Unity
 {
     /// <summary>Represents an effect that can be applied to the game.</summary>
     /// <remarks>Effect implementations should inherit from this class.</remarks>
-    public abstract class UnityEffectBase : MonoBehaviour, IEffect
+    public abstract class UnityEffectBase : MonoBehaviour, IEffect, ICloneableEffect
     {
+        private static readonly Regex MetadataPlaceholderRegex = new(@"\{\{([^{}]+)\}\}", RegexOptions.CultureInvariant);
+
         /// <summary>
         /// The primary effect ID associated with this effect.
         /// </summary>
@@ -24,6 +28,17 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         [SerializeField, Tooltip("The display name associated with this effect.")]
         public string Name = string.Empty;
+
+        /// <summary>
+        /// Gets the display name of the effect, with any metadata placeholders replaced by their corresponding values.
+        /// </summary>
+        public string DisplayName
+        {
+            get => MetadataPlaceholderRegex.Replace(Name, match =>
+                CrowdControlBehavior != null && CrowdControlBehavior.TryGetMetadataString(match.Groups[1].Value, out string metadataValue)
+                    ? metadataValue
+                    : match.Value);
+        }
 
         /// <summary>
         /// A human-readable description of what the effect does.
@@ -114,56 +129,36 @@ namespace CrowdControl.Client.Unity
         public CrowdControlBehavior CrowdControlBehavior { get; private set; }
 
         /// <summary>
-        /// Indicates whether the effect has been initialized. This is used to prevent multiple initializations in the Unity lifecycle.
-        /// </summary>
-        [NonSerialized]
-        private bool m_initialized;
-
-        /// <summary>
         /// Unity lifecycle method. Initializes the effect when the GameObject is first loaded. This ensures that the effect is ready to handle requests as soon as it becomes active in the scene.
         /// </summary>
-        protected virtual void Awake() => Initialize();
+        protected virtual void Awake() => CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
 
         /// <summary>
-        /// Initializes the effect by setting up its attributes and ensuring it is not decorated with the EffectAttribute.
+        /// Initializes the effect by setting up any necessary state or configuration.
         /// </summary>
-        /// <remarks>This method should be called before using the effect to ensure it is properly configured. Subsequent calls have no effect if the effect is already initialized.</remarks>
-        /// <exception cref="InvalidOperationException">Thrown if the effect class is decorated with the EffectAttribute, which is not allowed for classes inheriting from UnityEffectBase.</exception>
-        public void Initialize()
-        {
-            if (m_initialized) return;
-            m_initialized = true;
+        /// <remarks>This method should be called before using the effect to ensure it is properly configured.</remarks>
+        public virtual void Initialize() { }
 
-            CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
-        }
+        /// <inheritdoc cref="IEffect.Start"/>
+        public abstract WebSocket.EffectResponse StartEffect(EffectRequest request);
+        WebSocket.EffectResponse IEffect.Start(EffectRequest request) => StartEffect(request);
 
-        /// <summary>Starts an effect in response to an effect request.</summary>
-        /// <param name="request">The effect request to handle.</param>
-        /// <returns>An <see cref="EffectStatus"/> indicating the result of the operation.</returns>
-        public abstract EffectStatus StartEffect(EffectRequest request);
-        EffectStatus IEffect.Start(EffectRequest request) => StartEffect(request);
+        /// <inheritdoc cref="IEffect.Tick"/>
+        public virtual WebSocket.EffectResponse? TickEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Tick(EffectRequest request) => TickEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Performs an update tick for a timed effect.</summary>
-        public virtual EffectStatus? TickEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Tick(EffectRequest request) => TickEffect(request);
+        /// <inheritdoc cref="IEffect.Pause"/>
+        public virtual WebSocket.EffectResponse? PauseEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Pause(EffectRequest request) => PauseEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Pauses a timed effect.</summary>
-        public virtual EffectStatus? PauseEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Pause(EffectRequest request) => PauseEffect(request);
+        /// <inheritdoc cref="IEffect.Resume"/>
+        public virtual WebSocket.EffectResponse? ResumeEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Resume(EffectRequest request) => ResumeEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Resumes a paused timed effect.</summary>
-        public virtual EffectStatus? ResumeEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Resume(EffectRequest request) => ResumeEffect(request);
+        /// <inheritdoc cref="IEffect.Stop"/>
+        public virtual WebSocket.EffectResponse? StopEffect(EffectRequest request) => null;
+        WebSocket.EffectResponse? IEffect.Stop(EffectRequest request) => StopEffect(request);
 
-        /// <inheritdoc cref="StartEffect"/>
-        /// <summary>Stops a running timed effect.</summary>
-        public virtual EffectStatus? StopEffect(EffectRequest request) => null;
-        EffectStatus? IEffect.Stop(EffectRequest request) => StopEffect(request);
-
-        /// <summary>Converts this effect instance into a serializable object.</summary>
         public JObject ToJObject()
         {
             JObject nextItem = new()
@@ -191,6 +186,37 @@ namespace CrowdControl.Client.Unity
                 nextItem["parameters"] = JObject.FromObject(parameters);
 
             return nextItem;
+        }
+
+        /// <summary>
+        /// Clones the current effect instance with a new effect ID.
+        /// </summary>
+        /// <param name="newEffectID">The new effect ID to assign to the cloned effect.</param>
+        /// <returns>A new instance of <see cref="UnityEffectBase"/> with the specified effect ID.</returns>
+        /// <remarks><b>This method should not be called directly. Use the <see cref="CrowdControlBehavior.CloneEffect"/> method instead.</b></remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)] // Hide from IntelliSense to discourage direct usage.
+        public virtual UnityEffectBase Clone(string newEffectID)
+        {
+            if (string.IsNullOrWhiteSpace(newEffectID))
+                throw new ArgumentException("New effect IDs may not be null or whitespace.", nameof(newEffectID));
+
+            UnityEffectBase clone = Instantiate(this, transform.parent);
+            clone.EffectID = newEffectID;
+            return clone;
+        }
+
+        /// <inheritdoc cref="ICloneableEffect.Clone(string[])"/>
+        /// <remarks><b>This method should not be called directly. Use the <see cref="CrowdControlBehavior.CloneEffect"/> method instead.</b></remarks>
+        [EditorBrowsable(EditorBrowsableState.Never)] // Hide from IntelliSense to discourage direct usage.
+        ICloneableEffect ICloneableEffect.Clone(string[] newEffectIDs)
+        {
+            if (newEffectIDs == null || newEffectIDs.Length == 0)
+                throw new ArgumentException("New effect IDs must be provided for cloning.", nameof(newEffectIDs));
+
+            if (newEffectIDs.Length > 1)
+                throw new ArgumentException("Only one new effect ID can be provided for cloning.", nameof(newEffectIDs));
+
+            return Clone(newEffectIDs[0]);
         }
     }
 }

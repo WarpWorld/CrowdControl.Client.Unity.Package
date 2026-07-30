@@ -29,7 +29,32 @@ namespace CrowdControl.Client.Unity
 
         public abstract bool TryGetSerialized(out JToken? value);
 
-        public abstract event Action Updated;
+        public event Action? Updated;
+
+        /// <summary>
+        /// Raises the Updated event to notify listeners that the metadata has been updated. This method can be called by derived classes when the metadata value changes, allowing external components to react to updates.
+        /// </summary>
+        protected virtual void OnUpdated()
+        {
+            CrowdControlBehavior?.CrowdControl?.UpdateMetadata(Key, GetUntypedValue());
+            Updated?.Invoke();
+        }
+
+        /// <summary>
+        /// Gets the Crowd Control behavior component that provides access to game state and configuration.
+        /// </summary>
+        public CrowdControlBehavior CrowdControlBehavior { get; private set; }
+
+        /// <summary>
+        /// Unity lifecycle method. Initializes the effect when the GameObject is first loaded. This ensures that the effect is ready to handle requests as soon as it becomes active in the scene.
+        /// </summary>
+        protected virtual void Awake() => CrowdControlBehavior = FindFirstObjectByType<CrowdControlBehavior>();
+
+        /// <summary>
+        /// Initializes the metadata object by setting up any necessary state or configuration.
+        /// </summary>
+        /// <remarks>This method should be called before using the metadata object to ensure it is properly configured.</remarks>
+        public virtual void Initialize() { }
     }
 
     /// <summary>
@@ -47,8 +72,20 @@ namespace CrowdControl.Client.Unity
         [Tooltip("The value associated with this metadata. The type and meaning of this value is determined by the specific metadata implementation.")]
         public abstract TValue Value { get; }
 
-        private protected override object? GetUntypedValue() => Value!;
+        private protected override object? GetUntypedValue() => Value;
 
-        TValue IMetadata<TValue>.Value => Value!;
+        TValue IMetadata<TValue>.Value => Value;
+
+        public new event Action<TValue>? Updated;
+
+        /// <summary>
+        /// Raises the Updated event to notify listeners that the metadata has been updated, passing the new value as an argument. This method can be called by derived classes when the metadata value changes, allowing external components to react to updates with knowledge of the new value.
+        /// </summary>
+        /// <param name="value">The new value of the metadata.</param>
+        protected override void OnUpdated()
+        {
+            base.OnUpdated();
+            Updated?.Invoke(Value);
+        }
     }
 }

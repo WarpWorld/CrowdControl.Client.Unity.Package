@@ -3,14 +3,12 @@ using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.Serialization;
 
 namespace CrowdControl.Client.Unity
 {
@@ -32,12 +30,6 @@ namespace CrowdControl.Client.Unity
         [SerializeField]
         [Tooltip("The application identifier used for authentication with the Crowd Control service.")]
         public string ApplicationID;
-
-        /// <summary>The public client key used for authentication with the Crowd Control service.</summary>
-        [SerializeField]
-        [FormerlySerializedAs("ApplicationSecret")]
-        [Tooltip("The public client key used for authentication with the Crowd Control service.")]
-        public string PublicClientKey;
 
         /// <summary>Component that provides the current <see cref="WebSocket.GameState"/> to Crowd Control.</summary>
         [SerializeField]
@@ -188,7 +180,7 @@ namespace CrowdControl.Client.Unity
                 enabled = false;
                 return;
             }
-        
+
             if (!EffectLoader)
             {
                 Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before enabling the CrowdControl Behavior.");
@@ -223,7 +215,7 @@ namespace CrowdControl.Client.Unity
 
             OnSessionEnded();
         }
-        
+
         /// <summary>Initializes and connects the Crowd Control client.</summary>
         public void Connect()
         {
@@ -232,7 +224,7 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
-            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, PublicClientKey, m_jwt);
+            CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
             CrowdControl.EffectResponseSent += OnEffectResponseSent;
@@ -253,6 +245,7 @@ namespace CrowdControl.Client.Unity
                         PlayerPrefs.Save();
                     }, null);
                 }
+                OnLoginTokenReceived(j);
             };
 
             CrowdControl.SessionReady += OnSessionReady;
@@ -265,6 +258,7 @@ namespace CrowdControl.Client.Unity
 
         private void RefreshJWT()
         {
+            CrowdControl?.RefreshToken();
             if (CrowdControl.IsTokenValid())
             {
                 Log.Debug("Valid JWT token found, attempting to start session...");
@@ -534,9 +528,11 @@ namespace CrowdControl.Client.Unity
         /// <remarks>This event is invoked between Update() and LateUpdate() in the Unity lifecycle, so it will be processed after all Update() calls but before any LateUpdate() calls.</remarks>
         // ReSharper disable once EventNeverSubscribedTo.Global
         public event Action<EffectState>? EffectUpdate;
+
+
         public event Action<IEnumerable<KeyValuePair<string, object?>>>? MetadataChanged;
 
-        private void OnEffectResponseSent(EffectRequest effectRequest, EffectResponse effectResponse)
+        private void OnEffectResponseSent(EffectRequest effectRequest, Common.EffectResponse effectResponse)
         {
             if (CrowdControl == null) return;
             if (!CrowdControl.EffectLoader.Effects.TryGetValue(effectRequest.EffectID, out var effect)) return;
@@ -547,7 +543,7 @@ namespace CrowdControl.Client.Unity
                 EffectUpdateEvent?.Invoke(state);
             }, null);
         }
-        
+
         private void OnEffectReportSent(EffectReport effectReport) { }
 
         /// <summary>Sends a ping to the Crowd Control service and logs the result.</summary>
@@ -569,14 +565,14 @@ namespace CrowdControl.Client.Unity
             {
                 result.ContinueWith(t => printResult(t.Result));
             }
-            
+
             void printResult(bool success)
             {
                 if (success) Debug.Log($"Ping response received.");
-                else Debug.LogError("Ping failed to receive a response.");   
+                else Debug.LogError("Ping failed to receive a response.");
             }
         }
-    
+
         /// <summary>Unity physics update loop; forwards timing to the Crowd Control client for processing.</summary>
         void FixedUpdate() => CrowdControl?.Update(Time.time, Time.deltaTime);
 
@@ -594,6 +590,58 @@ namespace CrowdControl.Client.Unity
                 tcs.SetResult(result);
             }, null);
             return tcs.Task;
+        }
+
+        /// <summary>
+        /// Attempts to get a metadata object from the Crowd Control client.
+        /// </summary>
+        /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
+        /// <param name="key">The key of the metadata to retrieve.</param>
+        /// <param name="value">When this method returns, contains the metadata object associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, null.</param>
+        /// <returns>true if the metadata object was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
+        /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
+        public bool TryGetMetadataObject<TValue>(string key, out TValue value)
+        {
+            value = default!;
+            if (MetadataLoader == null) return false;
+            if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
+            if (metadata is TValue typedMetadata)
+            {
+                value = typedMetadata;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Attempts to retrieve a metadata value from the Crowd Control client.</summary>
+        /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
+        /// <param name="key">The key of the metadata value to retrieve.</param>
+        /// <param name="value">When this method returns, contains the metadata value associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, the default value for <typeparamref name="TValue"/>.</param>
+        /// <returns>true if the metadata value was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
+        /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
+        public bool TryGetMetadataValue<TValue>(string key, out TValue value)
+        {
+            value = default!;
+            if (MetadataLoader == null) return false;
+            if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
+            if (metadata is not IMetadata<TValue> typedMetadata) return false;
+            value = typedMetadata.Value;
+            return true;
+        }
+
+        /// <summary>Attempts to retrieve a metadata value from the Crowd Control client.</summary>
+        /// <typeparam name="TValue">The expected type of the metadata value.</typeparam>
+        /// <param name="key">The key of the metadata value to retrieve.</param>
+        /// <param name="value">When this method returns, contains the metadata value associated with the specified key, if the key is found and the value can be cast to <typeparamref name="TValue"/>; otherwise, the default value for <typeparamref name="TValue"/>.</param>
+        /// <returns>true if the metadata value was found and successfully cast to <typeparamref name="TValue"/>; otherwise, false.</returns>
+        /// <remarks>This method will return false if the metadata loader is not initialized, if the specified key does not exist in the metadata, or if the value cannot be cast to <typeparamref name="TValue"/>.</remarks>
+        public bool TryGetMetadataString(string key, out string value)
+        {
+            value = default!;
+            if (MetadataLoader == null) return false;
+            if (!MetadataLoader.Metadata.TryGetValue(key, out IMetadata metadata)) return false;
+            value = metadata.Value?.ToString() ?? string.Empty;
+            return true;
         }
 
         /// <summary>
@@ -626,5 +674,60 @@ namespace CrowdControl.Client.Unity
                 else Debug.LogError("Failed to update custom effects.");
             }).Forget();
         }
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.CloneEffect"/>
+        public bool CloneEffect(string sourceEffectID, params string[] destEffectIDs) => CrowdControl?.CloneEffect(sourceEffectID, destEffectIDs) ?? false;
+
+        #region Show Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowEffects(string[])"/>
+        public Task<bool> ShowEffects(params string[] codes) => CrowdControl?.ShowEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> ShowEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.ShowEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.ShowAllEffects(string?)"/>
+        public Task<bool> ShowAllEffects(string? message = null) => CrowdControl?.ShowAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Hide Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideEffects(string[])"/>
+        public Task<bool> HideEffects(params string[] codes) => CrowdControl?.HideEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> HideEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.HideEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.HideAllEffects(string?)"/>
+        public Task<bool> HideAllEffects(string? message = null) => CrowdControl?.HideAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Enable Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableEffects(string[])"/>
+        public Task<bool> EnableEffects(params string[] codes) => CrowdControl?.EnableEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> EnableEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.EnableEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.EnableAllEffects(string?)"/>
+        public Task<bool> EnableAllEffects(string? message = null) => CrowdControl?.EnableAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
+
+        #region Disable Effects
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableEffects(string[])"/>
+        public Task<bool> DisableEffects(params string[] codes) => CrowdControl?.DisableEffects(codes) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableEffects(IEnumerable{string}, string?)"/>
+        public Task<bool> DisableEffects(IEnumerable<string> codes, string? message = null) => CrowdControl?.DisableEffects(codes, message) ?? Task.FromResult(false);
+
+        /// <inheritdoc cref="WebSocket.CrowdControl.DisableAllEffects(string?)"/>
+        public Task<bool> DisableAllEffects(string? message = null) => CrowdControl?.DisableAllEffects(message) ?? Task.FromResult(false);
+
+        #endregion
     }
 }
