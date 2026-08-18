@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,14 +10,18 @@ namespace CrowdControl.Client.Unity
     public sealed class UnityMainThreadTaskScheduler : TaskScheduler
     {
         private readonly SynchronizationContext m_synchronizationContext;
-        private readonly ConcurrentQueue<Task> m_scheduledTasks = new ConcurrentQueue<Task>();
+
+        //keyed by task rather than queued, because the posted callbacks do not necessarily
+        //arrive in the order the tasks were scheduled when more than one thread is scheduling
+        private readonly ConcurrentDictionary<Task, long> m_scheduledTasks = new ConcurrentDictionary<Task, long>();
+        private long m_scheduleSequence;
 
         public UnityMainThreadTaskScheduler(SynchronizationContext synchronizationContext)
             => m_synchronizationContext = synchronizationContext ?? throw new ArgumentNullException(nameof(synchronizationContext));
 
         protected override void QueueTask(Task task)
         {
-            m_scheduledTasks.Enqueue(task);
+            m_scheduledTasks[task] = Interlocked.Increment(ref m_scheduleSequence);
 
             m_synchronizationContext.Post(static state =>
             {
@@ -27,8 +32,7 @@ namespace CrowdControl.Client.Unity
 
         private void ExecuteQueuedTask(Task task)
         {
-            if (m_scheduledTasks.TryDequeue(out Task? dequeued) && !ReferenceEquals(dequeued, task))
-                m_scheduledTasks.Enqueue(dequeued);
+            m_scheduledTasks.TryRemove(task, out _);
 
             TryExecuteTask(task);
         }
@@ -41,6 +45,7 @@ namespace CrowdControl.Client.Unity
             return TryExecuteTask(task);
         }
 
-        protected override IEnumerable<Task> GetScheduledTasks() => m_scheduledTasks.ToArray();
+        protected override IEnumerable<Task> GetScheduledTasks()
+            => m_scheduledTasks.OrderBy(static entry => entry.Value).Select(static entry => entry.Key).ToArray();
     }
 }
