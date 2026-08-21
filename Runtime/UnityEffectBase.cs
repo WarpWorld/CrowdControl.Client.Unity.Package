@@ -159,6 +159,7 @@ namespace CrowdControl.Client.Unity
         public virtual WebSocket.EffectResponse? StopEffect(EffectRequest request) => null;
         WebSocket.EffectResponse? IEffect.Stop(EffectRequest request) => StopEffect(request);
 
+        /// <inheritdoc cref="IEffect.ToJObject"/>
         public JObject ToJObject()
         {
             JObject nextItem = new()
