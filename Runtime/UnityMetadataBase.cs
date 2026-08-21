@@ -27,8 +27,10 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         private protected abstract object? GetUntypedValue();
 
+        /// <inheritdoc/>
         public abstract bool TryGetSerialized(out JToken? value);
 
+        /// <inheritdoc/>
         public event Action? Updated;
 
         /// <summary>
@@ -76,12 +78,12 @@ namespace CrowdControl.Client.Unity
 
         TValue IMetadata<TValue>.Value => Value;
 
+        /// <summary>Occurs when the metadata value is updated.</summary>
         public new event Action<TValue>? Updated;
 
         /// <summary>
         /// Raises the Updated event to notify listeners that the metadata has been updated, passing the new value as an argument. This method can be called by derived classes when the metadata value changes, allowing external components to react to updates with knowledge of the new value.
         /// </summary>
-        /// <param name="value">The new value of the metadata.</param>
         protected override void OnUpdated()
         {
             base.OnUpdated();

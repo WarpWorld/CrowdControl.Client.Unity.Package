@@ -1,4 +1,4 @@
-using CrowdControl.Client.WebSocket;
+﻿using CrowdControl.Client.WebSocket;
 using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
@@ -107,6 +107,7 @@ namespace CrowdControl.Client.Unity
 
         private UnityMainThreadTaskScheduler? m_taskScheduler;
 
+        /// <summary>Gets the underlying Crowd Control client instance after initialization.</summary>
         public WebSocket.CrowdControl? CrowdControl { get; private set; }
 
         /// <summary>Finalizer to ensure resources are released if <see cref="Dispose()"/> wasn't called.</summary>
@@ -126,38 +127,78 @@ namespace CrowdControl.Client.Unity
             IsDisposed = true;
 
             Stop();
+            UnhookLogging();
             if (disposing) GC.SuppressFinalize(this);
+        }
+
+        /// <summary>Whether this instance currently holds a subscription to the Crowd Control log.</summary>
+        private bool m_loggingHooked;
+
+        /// <summary>The number of instances currently subscribed to the Crowd Control log.</summary>
+        private static int s_loggingSubscribers;
+
+        /// <summary>Writes a Crowd Control log message to the Unity console.</summary>
+        /// <param name="message">The message to write.</param>
+        /// <param name="level">The severity of the message.</param>
+        private static void OnLogMessage(string message, LogLevel level)
+        {
+            switch (level)
+            {
+                case LogLevel.Warning:
+                    Debug.LogWarning(message);
+                    break;
+                case LogLevel.Error:
+                case LogLevel.Exception:
+                    Debug.LogError(message);
+                    break;
+                case LogLevel.Message:
+                    Debug.Log(message);
+                    break;
+                case LogLevel.Debug:
+                    Debug.Log($"[Debug] {message}");
+                    break;
+                case LogLevel.Effect:
+                    Debug.Log($"[Effect] {message}");
+                    break;
+            }
+        }
+
+        /// <summary>Routes the Crowd Control log to the Unity console for as long as this instance lives.</summary>
+        /// <remarks>
+        /// <see cref="Log.OnMessage"/> is a static event, so it outlives both this component and, when domain reloading
+        /// is disabled, the play session itself. The subscription is therefore reference-counted and uses a method
+        /// rather than a lambda, so that repeated Awake calls cannot stack up duplicate handlers.
+        /// </remarks>
+        private void HookLogging()
+        {
+            if (m_loggingHooked) return;
+            m_loggingHooked = true;
+
+            Log.FileOutput = false;
+            Log.ConsoleOutput = false;
+
+            if (Interlocked.Increment(ref s_loggingSubscribers) != 1) return;
+
+            Debug.Log("Rerouting Crowd Control logs to Unity console...");
+            Log.OnMessage += OnLogMessage;
+        }
+
+        /// <summary>Stops routing the Crowd Control log to the Unity console once no instance needs it.</summary>
+        private void UnhookLogging()
+        {
+            if (!m_loggingHooked) return;
+            m_loggingHooked = false;
+
+            if (Interlocked.Decrement(ref s_loggingSubscribers) != 0) return;
+
+            Log.OnMessage -= OnLogMessage;
         }
 
         void Awake()
         {
             if (PreserveBetweenScenes) DontDestroyOnLoad(gameObject);
 
-            Debug.Log("Rerouting Crowd Control logs to Unity console...");
-            Log.FileOutput = false;
-            Log.ConsoleOutput = false;
-            Log.OnMessage += (message, level) =>
-            {
-                switch (level)
-                {
-                    case LogLevel.Warning:
-                        Debug.LogWarning(message);
-                        break;
-                    case LogLevel.Error:
-                    case LogLevel.Exception:
-                        Debug.LogError(message);
-                        break;
-                    case LogLevel.Message:
-                        Debug.Log(message);
-                        break;
-                    case LogLevel.Debug:
-                        Debug.Log($"[Debug] {message}");
-                        break;
-                    case LogLevel.Effect:
-                        Debug.Log($"[Effect] {message}");
-                        break;
-                }
-            };
+            HookLogging();
 
             m_synchronizationContext = SynchronizationContext.Current;
             m_taskScheduler = new(m_synchronizationContext);
@@ -529,7 +570,7 @@ namespace CrowdControl.Client.Unity
         // ReSharper disable once EventNeverSubscribedTo.Global
         public event Action<EffectState>? EffectUpdate;
 
-
+        /// <summary>Occurs when one or more metadata values are sent to the Crowd Control service.</summary>
         public event Action<IEnumerable<KeyValuePair<string, object?>>>? MetadataChanged;
 
         private void OnEffectResponseSent(EffectRequest effectRequest, Common.EffectResponse effectResponse)

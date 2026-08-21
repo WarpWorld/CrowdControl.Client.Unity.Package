@@ -7,6 +7,7 @@ using UnityEngine;
 
 namespace CrowdControl.Client.Unity
 {
+    /// <summary>Discovers and registers Unity metadata components for use by Crowd Control.</summary>
     public class UnityMetadataLoader : MonoBehaviour, IMetadataLoader
     {
         [NonSerialized]

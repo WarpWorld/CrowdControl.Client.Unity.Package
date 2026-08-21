@@ -6,14 +6,18 @@ using System.Threading.Tasks;
 
 namespace CrowdControl.Client.Unity
 {
+    /// <summary>Schedules tasks for execution on Unity's main thread.</summary>
     public sealed class UnityMainThreadTaskScheduler : TaskScheduler
     {
         private readonly SynchronizationContext m_synchronizationContext;
         private readonly ConcurrentQueue<Task> m_scheduledTasks = new ConcurrentQueue<Task>();
 
+        /// <summary>Initializes a scheduler that posts work to the supplied synchronization context.</summary>
+        /// <param name="synchronizationContext">The Unity main-thread synchronization context.</param>
         public UnityMainThreadTaskScheduler(SynchronizationContext synchronizationContext)
             => m_synchronizationContext = synchronizationContext ?? throw new ArgumentNullException(nameof(synchronizationContext));
 
+        /// <inheritdoc/>
         protected override void QueueTask(Task task)
         {
             m_scheduledTasks.Enqueue(task);
@@ -33,6 +37,7 @@ namespace CrowdControl.Client.Unity
             TryExecuteTask(task);
         }
 
+        /// <inheritdoc/>
         protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
         {
             if (SynchronizationContext.Current != m_synchronizationContext)
@@ -41,6 +46,7 @@ namespace CrowdControl.Client.Unity
             return TryExecuteTask(task);
         }
 
+        /// <inheritdoc/>
         protected override IEnumerable<Task> GetScheduledTasks() => m_scheduledTasks.ToArray();
     }
 }
