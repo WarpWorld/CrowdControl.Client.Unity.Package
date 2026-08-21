@@ -192,6 +192,8 @@ namespace CrowdControl.Client.Unity
             if (Interlocked.Decrement(ref s_loggingSubscribers) != 0) return;
 
             Log.OnMessage -= OnLogMessage;
+            Log.FileOutput = true;
+            Log.ConsoleOutput = true;
         }
 
         void Awake()
