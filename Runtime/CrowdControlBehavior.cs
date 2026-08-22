@@ -70,10 +70,15 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically add custom effects defined in the EffectLoader to the service on startup.")]
         public bool AutoAddCustomEffects = true;
 
-        /// <summary>Whether to block on ping responses.</summary>
-        /// <remarks>This is for testing purposes only and should generally be false in production.</remarks>
+        /// <summary>No longer used. Ping responses are always reported asynchronously.</summary>
+        /// <remarks>
+        /// This previously blocked the calling thread until a ping was answered. Doing that on the Unity main thread
+        /// deadlocks: the ping completes on a background thread and the result is reported back through the main
+        /// thread, which cannot run while it is blocked waiting. The field is retained so existing prefabs and scenes
+        /// keep deserializing cleanly.
+        /// </remarks>
         [SerializeField]
-        [Tooltip("Whether to block on ping responses. This is for testing purposes only and should generally be false in production.")]
+        [Tooltip("No longer used. Ping responses are always reported asynchronously.")]
         public bool WaitForPingResponse = true;
 
         /// <summary>Whether to persist the JWT token for reconnecting between executions.</summary>
@@ -192,8 +197,6 @@ namespace CrowdControl.Client.Unity
             if (Interlocked.Decrement(ref s_loggingSubscribers) != 0) return;
 
             Log.OnMessage -= OnLogMessage;
-            Log.FileOutput = true;
-            Log.ConsoleOutput = true;
         }
 
         void Awake()
@@ -598,21 +601,17 @@ namespace CrowdControl.Client.Unity
                 return;
             }
             System.Diagnostics.Debug.Assert(CrowdControl != null);
-            Task<bool> result = CrowdControl.Ping();
-            if (WaitForPingResponse)
-            {
-                result.Wait();
-                printResult(result.Result);
-            }
-            else
-            {
-                result.ContinueWith(t => printResult(t.Result));
-            }
+
+            //never block here: the ping completes on a background thread, and waiting on the main thread deadlocks it
+            CrowdControl.Ping().ContinueWith(t => printResult(t.Status == TaskStatus.RanToCompletion && t.Result));
 
             void printResult(bool success)
             {
-                if (success) Debug.Log($"Ping response received.");
-                else Debug.LogError("Ping failed to receive a response.");
+                m_synchronizationContext?.Post(_ =>
+                {
+                    if (success) Debug.Log($"Ping response received.");
+                    else Debug.LogError("Ping failed to receive a response.");
+                }, null);
             }
         }
 
