@@ -27,13 +27,51 @@ namespace CrowdControl.Client.Unity
         void Awake() => m_crowdControl = FindFirstObjectByType<CrowdControlBehavior>();
 
         /// <summary>
+        /// Guards <see cref="m_loaded"/> and the registry, so that a client loading content on one thread cannot race
+        /// a client being disposed on another. Disposal can run on the GC finalizer thread.
+        /// </summary>
+        private readonly object m_loadLock = new();
+
+        /// <summary>
         /// Unity lifecycle method that initializes the effect registry by scanning child components.
         /// </summary>
-        void Start()
-        {
-            if (m_loaded) return;
-            m_loaded = true;
+        void Start() => LoadEffects();
 
+        /// <summary>
+        /// Populates the effect registry from the child components, unless it is already populated.
+        /// </summary>
+        private void LoadEffects()
+        {
+            lock (m_loadLock)
+            {
+                if (m_loaded) return;
+                m_loaded = true;
+                ScanChildren();
+            }
+        }
+
+        /// <summary>
+        /// Discards the current registry and rescans the child components.
+        /// </summary>
+        /// <remarks>
+        /// Call this after adding or removing <see cref="UnityEffectBase"/> components at runtime. Reconnecting does
+        /// not need it: the registry deliberately survives a disconnect, see <see cref="IEffectLoader.Unload"/>.
+        /// </remarks>
+        public void Reload()
+        {
+            lock (m_loadLock)
+            {
+                Effects.Clear();
+                m_loaded = true;
+                ScanChildren();
+            }
+        }
+
+        /// <summary>
+        /// Registers every effect exposed by the child <see cref="UnityEffectBase"/> components.
+        /// </summary>
+        private void ScanChildren()
+        {
             foreach (UnityEffectBase effect in GetComponentsInChildren<UnityEffectBase>())
             {
                 effect.Initialize();
@@ -56,15 +94,33 @@ namespace CrowdControl.Client.Unity
         /// </summary>
         void OnDestroy()
         {
-            Effects.Clear();
-            m_loaded = false;
+            lock (m_loadLock)
+            {
+                Effects.Clear();
+                m_loaded = false;
+            }
         }
 
         /// <inheritdoc />
-        void IEffectLoader.Load() => Start();
-    
+        void IEffectLoader.Load() => LoadEffects();
+
         /// <inheritdoc />
-        void IEffectLoader.Unload() => OnDestroy();
+        /// <remarks>
+        /// Deliberately does not clear the registry.
+        /// <para>
+        /// This loader is a scene component shared by every <see cref="WebSocket.CrowdControl"/> instance, yet each
+        /// client calls this from its own disposal. Disposal is asynchronous and can also run from a finalizer, so a
+        /// client being torn down may unload <em>after</em> its replacement has already loaded. Clearing here left the
+        /// replacement reporting <c>ContentLoaded == true</c> against an empty registry while every effect component
+        /// was still alive, and every subsequent effect request failed to resolve a handler.
+        /// </para>
+        /// <para>
+        /// The registry is derived purely from the child components, so keeping it populated for as long as this
+        /// GameObject lives is always correct. <see cref="OnDestroy"/> still clears it when the object really goes
+        /// away, and <see cref="Reload"/> forces an explicit rescan.
+        /// </para>
+        /// </remarks>
+        void IEffectLoader.Unload() { }
 
 #if ENABLE_MONO
         /// <summary>

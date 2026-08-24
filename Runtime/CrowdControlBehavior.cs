@@ -1,4 +1,5 @@
 ﻿using CrowdControl.Client.WebSocket;
+using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Client.WebSocket.Metadata;
 using CrowdControl.Common;
@@ -65,10 +66,48 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.")]
         public bool AutoReconnect = true;
 
-        /// <summary>Whether to automatically add custom effects defined in the EffectLoader to the service on startup.</summary>
+        /// <summary>Whether to automatically upload the custom effects defined in the EffectLoader to the service when a session becomes ready.</summary>
+        /// <remarks>
+        /// <b>Development tool. Do not ship a build with this enabled.</b> Uploading effects rewrites the game pack's
+        /// custom effect list on the Crowd Control service for every viewer, and it only works at all with a developer
+        /// token carrying the <c>custom-effects:write</c> scope. It is ignored outside the Unity Editor, and a released
+        /// game should have its effects published in its game pack menu instead.
+        /// </remarks>
         [SerializeField]
-        [Tooltip("Whether to automatically add custom effects defined in the EffectLoader to the service on startup.")]
-        public bool AutoAddCustomEffects = true;
+        [Tooltip("DEVELOPMENT TOOL. Automatically uploads the custom effects defined in the EffectLoader to the service when a session becomes ready. " +
+                 "Requires a developer token with the 'custom-effects:write' scope, and is ignored outside the Unity Editor. " +
+                 "Released games should publish their effects in their game pack menu instead.")]
+        public bool AutoAddCustomEffects = false;
+
+        /// <summary>Whether to log every raw inbound and outbound WebSocket frame to the Unity console.</summary>
+        /// <remarks>
+        /// Diagnostic only. This is verbose: every frame becomes a console line, including keepalive ping/pong
+        /// traffic. Connection open, close and error events are logged regardless of this setting.
+        /// </remarks>
+        [SerializeField]
+        [Tooltip("Log every raw WebSocket frame sent and received. Verbose - diagnostic use only. " +
+                 "Connection open/close/error events are always logged regardless of this setting.")]
+        public bool LogSocketTraffic = false;
+
+        /// <summary>Whether to write the Crowd Control log to a file in addition to the Unity console.</summary>
+        /// <remarks>
+        /// Useful for capturing a session to send to support: the file has no Unity stack traces and survives a hang
+        /// or a force-kill, because every line is flushed as it is written.
+        /// </remarks>
+        [SerializeField]
+        [Tooltip("Also write the Crowd Control log to a file. Useful for capturing a session to send to support.")]
+        public bool LogToFile = false;
+
+        /// <summary>Where to write the log file when <see cref="LogToFile"/> is enabled.</summary>
+        /// <remarks>
+        /// Leave blank for <c>&lt;persistentDataPath&gt;/CrowdControl/crowdcontrol.log</c>. A relative path is taken
+        /// relative to <see cref="Application.persistentDataPath"/>; an absolute path is used as given. The previous
+        /// run's file is kept alongside it with a <c>.prev</c> extension.
+        /// </remarks>
+        [SerializeField]
+        [Tooltip("Log file path. Blank = <persistentDataPath>/CrowdControl/crowdcontrol.log. " +
+                 "Relative paths are resolved against persistentDataPath. The previous run is kept as .prev.")]
+        public string LogFilePath = "";
 
         /// <summary>No longer used. Ping responses are always reported asynchronously.</summary>
         /// <remarks>
@@ -147,6 +186,9 @@ namespace CrowdControl.Client.Unity
         /// <param name="level">The severity of the message.</param>
         private static void OnLogMessage(string message, LogLevel level)
         {
+            //queued and written on a background thread; safe to call from the socket threads
+            CrowdControlLogFile.Write($"[{level}] {message}");
+
             switch (level)
             {
                 case LogLevel.Warning:
@@ -184,6 +226,13 @@ namespace CrowdControl.Client.Unity
 
             if (Interlocked.Increment(ref s_loggingSubscribers) != 1) return;
 
+            if (LogToFile)
+            {
+                string path = CrowdControlLogFile.ResolvePath(LogFilePath);
+                if (CrowdControlLogFile.Open(path))
+                    Debug.Log($"Crowd Control log file: {path}");
+            }
+
             Debug.Log("Rerouting Crowd Control logs to Unity console...");
             Log.OnMessage += OnLogMessage;
         }
@@ -197,6 +246,7 @@ namespace CrowdControl.Client.Unity
             if (Interlocked.Decrement(ref s_loggingSubscribers) != 0) return;
 
             Log.OnMessage -= OnLogMessage;
+            CrowdControlLogFile.Close();
         }
 
         void Awake()
@@ -263,6 +313,11 @@ namespace CrowdControl.Client.Unity
         }
 
         /// <summary>Initializes and connects the Crowd Control client.</summary>
+        /// <remarks>
+        /// If a client already exists it is stopped first. Overwriting it instead would orphan a live client that
+        /// still holds the shared <see cref="EffectLoader"/> and <see cref="MetadataLoader"/>, and its disposal would
+        /// then run from the finalizer at an arbitrary later point, tearing down state the replacement is using.
+        /// </remarks>
         public void Connect()
         {
             if (!enabled)
@@ -270,6 +325,13 @@ namespace CrowdControl.Client.Unity
                 Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
+
+            if (CrowdControl != null)
+            {
+                Log.Debug("Connect called while a client already exists; stopping the existing client first.");
+                Stop();
+            }
+
             CrowdControl = new WebSocket.CrowdControl(GameStateManager, EffectLoader, MetadataLoader, m_taskScheduler, GameID, ApplicationID, m_jwt);
             CrowdControl.LoadContent();
             CrowdControl.EffectRequestReceived += OnEffectRequestReceived;
@@ -298,6 +360,7 @@ namespace CrowdControl.Client.Unity
             CrowdControl.SessionEnded += OnSessionEnded;
 
             CrowdControl.AutoReconnect = AutoReconnect;
+            CrowdControl.LogSocketTraffic = LogSocketTraffic;
             CrowdControl.Connect();
             RefreshJWT();
         }
@@ -399,16 +462,11 @@ namespace CrowdControl.Client.Unity
                 SessionReady.InvokeSafe();
                 SessionReadyEvent?.Invoke();
             }, null);
-            if (AutoAddCustomEffects && EffectLoader)
-            {
-                Log.Debug("Auto-adding custom effects...");
-                Task.Run(async () =>
-                {
-                    bool success = await CrowdControl.LoadCustomEffects(EffectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.ReplacePartial);
-                    if (success) Debug.Log("Custom effects updated successfully.");
-                    else Debug.LogError("Failed to update custom effects.");
-                }).Forget();
-            }
+#if UNITY_EDITOR
+            //deliberately compiled out of player builds: a shipped game must never rewrite its game pack effect list
+            if (AutoAddCustomEffects)
+                UploadCustomEffects(CustomEffects.OperationMode.ReplacePartial).Forget();
+#endif
         }
 
         /// <summary>UnityEvent invoked when the Crowd Control session has ended. This can be used to trigger in-game responses to the session ending.</summary>
@@ -686,36 +744,160 @@ namespace CrowdControl.Client.Unity
             return true;
         }
 
+        #region Custom Effects
+
+        /*
+         * Everything in this region is a DEVELOPMENT TOOL.
+         *
+         * Uploading custom effects rewrites the effect list that the Crowd Control service hands out for this game
+         * pack, so it affects every viewer of the game, not just the machine that made the call. The service only
+         * permits it with a developer token carrying the "custom-effects:write" scope, which ordinary player tokens
+         * never have, and only for game packs configured with "allowCustomEffects": true.
+         *
+         * The intended workflow is to iterate on effects from the Unity Editor, then publish the finished menu in the
+         * game pack. A released build should never call any of this.
+         *
+         * See https://developer.crowdcontrol.live/sockets/#custom-effects
+         */
+
+        /// <summary>
+        /// Gets a value indicating whether custom effects can currently be uploaded to or removed from the service.
+        /// </summary>
+        /// <remarks>
+        /// This is <see langword="true"/> only when the client is connected with a developer token that carries the
+        /// <c>custom-effects:write</c> scope. It is always <see langword="false"/> for an ordinary player token, so a
+        /// released build cannot modify the game pack even if it tries.
+        /// </remarks>
+        public bool CanUploadCustomEffects => CrowdControl?.CanWriteCustomEffects ?? false;
+
         /// <summary>
         /// Updates custom effects in the Crowd Control system by loading effects from the configured effect loader
         /// using merge mode.
         /// </summary>
-        /// <remarks>This operation runs asynchronously and requires both a valid Crowd Control connection
-        /// and an assigned EffectLoader. If either prerequisite is not met, an error is logged and no update is
-        /// performed. Only custom effects are included in the update.</remarks>
-        public void UpdateCustomEffects()
+        /// <remarks>
+        /// <b>Development tool.</b> See <see cref="UploadCustomEffects"/> for the requirements and caveats. This
+        /// overload is fire-and-forget so it can be wired directly to a UnityEvent or an inspector button; use
+        /// <see cref="UploadCustomEffects"/> when the result is needed.
+        /// </remarks>
+        public void UpdateCustomEffects() => UploadCustomEffects(CustomEffects.OperationMode.Merge).Forget();
+
+        /// <summary>
+        /// Uploads the custom effects exposed by the configured effect loader to the Crowd Control service.
+        /// </summary>
+        /// <param name="mode">
+        /// How the uploaded effects combine with the effects already registered for the game pack.
+        /// <see cref="CustomEffects.OperationMode.Merge"/> adds to them, <see cref="CustomEffects.OperationMode.ReplacePartial"/>
+        /// overwrites just the supplied effects, and <see cref="CustomEffects.OperationMode.ReplaceAll"/> discards
+        /// everything that is not supplied.
+        /// </param>
+        /// <returns>A task that resolves to <see langword="true"/> if the upload succeeded; otherwise, <see langword="false"/>.</returns>
+        /// <remarks>
+        /// <b>Development tool. Do not call this from a released build.</b> It requires a connected client with a
+        /// developer token carrying the <c>custom-effects:write</c> scope, an assigned
+        /// <see cref="EffectLoader"/>, and a game pack configured to allow custom effects. Check
+        /// <see cref="CanUploadCustomEffects"/> first. Only effects with <see cref="UnityEffectBase.CustomEffect"/>
+        /// set are uploaded, and the service accepts at most 75 of them per game pack.
+        /// </remarks>
+        public async Task<bool> UploadCustomEffects(CustomEffects.OperationMode mode)
         {
-            WebSocket.CrowdControl? crowdControl = CrowdControl;
+            if (!TryGetCustomEffectContext("upload custom effects", out WebSocket.CrowdControl? crowdControl, out UnityEffectLoader? effectLoader))
+                return false;
+
+            //snapshot on the calling (main) thread: the registry is a scene-derived collection and must not be
+            //enumerated from the background task that performs the upload
+            List<IEffect> customEffects = effectLoader!.Effects.Values.Where(e => e.IsCustom).ToList();
+            if (customEffects.Count == 0)
+            {
+                Debug.LogWarning("No custom effects were found to upload. Effects are only uploaded when their Custom Effect flag is set.");
+                return false;
+            }
+
+            bool success = await Task.Run(() => crowdControl!.LoadCustomEffects(customEffects, mode)).ConfigureAwait(false);
+            LogCustomEffectResult(success, $"Uploaded {customEffects.Count} custom effect(s).", "Failed to upload custom effects.");
+            return success;
+        }
+
+        /// <summary>Removes specific custom effects from the Crowd Control service by their effect IDs.</summary>
+        /// <param name="effectIDs">The effect IDs to remove.</param>
+        /// <returns>A task that resolves to <see langword="true"/> if the removal succeeded; otherwise, <see langword="false"/>.</returns>
+        /// <remarks><b>Development tool.</b> See <see cref="UploadCustomEffects"/> for the requirements and caveats.</remarks>
+        public Task<bool> DeleteCustomEffects(params string[] effectIDs) => DeleteCustomEffects((IEnumerable<string>)effectIDs);
+
+        /// <summary>Removes specific custom effects from the Crowd Control service by their effect IDs.</summary>
+        /// <param name="effectIDs">The effect IDs to remove.</param>
+        /// <returns>A task that resolves to <see langword="true"/> if the removal succeeded; otherwise, <see langword="false"/>.</returns>
+        /// <remarks><b>Development tool.</b> See <see cref="UploadCustomEffects"/> for the requirements and caveats.</remarks>
+        public async Task<bool> DeleteCustomEffects(IEnumerable<string> effectIDs)
+        {
+            if (!TryGetCustomEffectContext("delete custom effects", out WebSocket.CrowdControl? crowdControl, out _, requireEffectLoader: false))
+                return false;
+
+            List<string> ids = effectIDs.ToList();
+            bool success = await Task.Run(() => crowdControl!.DeleteCustomEffects(ids)).ConfigureAwait(false);
+            LogCustomEffectResult(success, $"Removed {ids.Count} custom effect(s).", "Failed to remove custom effects.");
+            return success;
+        }
+
+        /// <summary>Removes every custom effect registered for this game pack from the Crowd Control service.</summary>
+        /// <returns>A task that resolves to <see langword="true"/> if the removal succeeded; otherwise, <see langword="false"/>.</returns>
+        /// <remarks>
+        /// <b>Development tool, and a destructive one.</b> This clears the whole custom effect list for the game pack
+        /// on the service, including effects uploaded from another machine. See <see cref="UploadCustomEffects"/> for
+        /// the requirements and caveats.
+        /// </remarks>
+        public async Task<bool> DeleteAllCustomEffects()
+        {
+            if (!TryGetCustomEffectContext("delete custom effects", out WebSocket.CrowdControl? crowdControl, out _, requireEffectLoader: false))
+                return false;
+
+            bool success = await Task.Run(() => crowdControl!.DeleteAllCustomEffects()).ConfigureAwait(false);
+            LogCustomEffectResult(success, "Removed all custom effects.", "Failed to remove custom effects.");
+            return success;
+        }
+
+        /// <summary>Validates the prerequisites shared by every custom effect operation, logging the reason on failure.</summary>
+        /// <param name="action">The action being attempted, used in the log message.</param>
+        /// <param name="crowdControl">The connected client, when this returns <see langword="true"/>.</param>
+        /// <param name="effectLoader">The assigned effect loader, when this returns <see langword="true"/>.</param>
+        /// <param name="requireEffectLoader">Whether the operation needs an effect loader. Removals do not, since they work from IDs alone.</param>
+        /// <returns><see langword="true"/> if the operation may proceed; otherwise, <see langword="false"/>.</returns>
+        private bool TryGetCustomEffectContext(string action, out WebSocket.CrowdControl? crowdControl, out UnityEffectLoader? effectLoader, bool requireEffectLoader = true)
+        {
+            crowdControl = CrowdControl;
+            effectLoader = EffectLoader;
+
             if (crowdControl == null)
             {
-                Debug.LogError("CrowdControlBehavior is not connected! Cannot update custom effects.");
-                return;
+                Debug.LogError($"CrowdControlBehavior is not connected! Cannot {action}.");
+                return false;
             }
 
-            UnityEffectLoader? effectLoader = EffectLoader;
-            if (!effectLoader)
+            if (requireEffectLoader && (!effectLoader))
             {
-                Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before updating custom effects.");
-                return;
+                Debug.LogError($"CrowdControlBehavior.EffectLoader is not set! Please set it before attempting to {action}.");
+                return false;
             }
 
-            Task.Run(async () =>
+            if (!crowdControl.CanWriteCustomEffects)
             {
-                bool success = await crowdControl.LoadCustomEffects(effectLoader.Effects.Values.Where(e => e.IsCustom), CustomEffects.OperationMode.Merge);
-                if (success) Debug.Log("Custom effects updated successfully.");
-                else Debug.LogError("Failed to update custom effects.");
-            }).Forget();
+                Debug.LogError($"Cannot {action}: the current login does not have the 'custom-effects:write' scope. " +
+                               "Custom effect uploading is a development tool and needs a developer token issued by Crowd Control. " +
+                               "Released games should publish their effects in their game pack menu instead.");
+                return false;
+            }
+
+            return true;
         }
+
+        /// <summary>Reports the outcome of a custom effect operation on the Unity main thread.</summary>
+        private void LogCustomEffectResult(bool success, string successMessage, string failureMessage)
+            => m_synchronizationContext?.Post(_ =>
+            {
+                if (success) Debug.Log(successMessage);
+                else Debug.LogError(failureMessage);
+            }, null);
+
+        #endregion
 
         /// <inheritdoc cref="WebSocket.CrowdControl.CloneEffect"/>
         public bool CloneEffect(string sourceEffectID, params string[] destEffectIDs) => CrowdControl?.CloneEffect(sourceEffectID, destEffectIDs) ?? false;
