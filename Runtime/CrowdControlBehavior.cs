@@ -79,14 +79,65 @@ namespace CrowdControl.Client.Unity
                  "Released games should publish their effects in their game pack menu instead.")]
         public bool AutoAddCustomEffects = false;
 
+        /// <summary>When Crowd Control is allowed to write to the Unity console or to a log file.</summary>
+        public enum LoggingMode
+        {
+            /// <summary>Log in the editor and in development builds, but stay silent in a release build. The default.</summary>
+            EditorAndDevelopmentBuilds,
+
+            /// <summary>Always log, including in release builds.</summary>
+            Always,
+
+            /// <summary>Never log anywhere.</summary>
+            Never
+        }
+
+        /// <summary>Backing field for <see cref="Logging"/>.</summary>
+        [SerializeField]
+        [Tooltip("Master switch for all Crowd Control logging. The default logs in the editor and in development " +
+                 "builds but ships silent, so testing shows everything and a release build shows nothing. While " +
+                 "logging is off, nothing is written to the console or the log file - warnings and errors included - " +
+                 "and the other logging options have no effect.")]
+        private LoggingMode m_logging = LoggingMode.EditorAndDevelopmentBuilds;
+
+        /// <summary>The master switch for all Crowd Control logging.</summary>
+        /// <remarks>
+        /// While logging is off, nothing the plugin produces reaches the Unity console or the log file - including
+        /// warnings and errors, and including messages raised on the socket threads - and <see cref="LogSocketTraffic"/>
+        /// and <see cref="LogToFile"/> have no effect. The default,
+        /// <see cref="LoggingMode.EditorAndDevelopmentBuilds"/>, keeps the console informative while a developer is
+        /// testing and silences a shipped build, so shipping with logging on has to be a deliberate choice.
+        /// Setting this takes effect immediately.
+        /// </remarks>
+        public LoggingMode Logging
+        {
+            get => m_logging;
+            set
+            {
+                m_logging = value;
+                ApplyLoggingSettings();
+            }
+        }
+
+        /// <summary>Gets whether <see cref="Logging"/> permits logging in the current build.</summary>
+        public bool LoggingEnabled => m_logging switch
+        {
+            LoggingMode.Always => true,
+            LoggingMode.Never => false,
+            //isEditor covers both play mode and edit mode; isDebugBuild is a player built with Development Build set
+            _ => Application.isEditor || Debug.isDebugBuild
+        };
+
         /// <summary>Whether to log every raw inbound and outbound WebSocket frame to the Unity console.</summary>
         /// <remarks>
         /// Diagnostic only. This is verbose: every frame becomes a console line, including keepalive ping/pong
-        /// traffic. Connection open, close and error events are logged regardless of this setting.
+        /// traffic. Connection open, close and error events are logged regardless of this setting, but nothing is
+        /// logged at all while <see cref="Logging"/> disallows it.
         /// </remarks>
         [SerializeField]
         [Tooltip("Log every raw WebSocket frame sent and received. Verbose - diagnostic use only. " +
-                 "Connection open/close/error events are always logged regardless of this setting.")]
+                 "Connection open/close/error events are logged regardless of this setting. " +
+                 "Ignored when Logging is off for this build.")]
         public bool LogSocketTraffic = false;
 
         /// <summary>Whether to write the Crowd Control log to a file in addition to the Unity console.</summary>
@@ -95,19 +146,38 @@ namespace CrowdControl.Client.Unity
         /// or a force-kill, because every line is flushed as it is written.
         /// </remarks>
         [SerializeField]
-        [Tooltip("Also write the Crowd Control log to a file. Useful for capturing a session to send to support.")]
+        [Tooltip("Also write the Crowd Control log to a file. Useful for capturing a session to send to support. " +
+                 "Ignored when Logging is off for this build.")]
         public bool LogToFile = false;
 
         /// <summary>Where to write the log file when <see cref="LogToFile"/> is enabled.</summary>
         /// <remarks>
-        /// Leave blank for <c>&lt;persistentDataPath&gt;/CrowdControl/crowdcontrol.log</c>. A relative path is taken
-        /// relative to <see cref="Application.persistentDataPath"/>; an absolute path is used as given. The previous
-        /// run's file is kept alongside it with a <c>.prev</c> extension.
+        /// Leave blank for <c>&lt;persistentDataPath&gt;/CrowdControl/crowdcontrol-unity.log</c>, which on Windows is
+        /// <c>%UserProfile%\AppData\LocalLow\&lt;Company&gt;\&lt;Product&gt;\CrowdControl\</c>. That is inside
+        /// <b>this game's</b> data folder and has nothing to do with the Crowd Control desktop application's log in
+        /// <c>%AppData%\CrowdControl\logs</c>. A relative path is taken relative to
+        /// <see cref="Application.persistentDataPath"/>; an absolute path is used as given. The previous run's file is
+        /// kept alongside it with a <c>.prev</c> extension. <see cref="ResolvedLogFilePath"/> gives the resolved
+        /// absolute path, and it is written to the console when the file is opened.
         /// </remarks>
         [SerializeField]
-        [Tooltip("Log file path. Blank = <persistentDataPath>/CrowdControl/crowdcontrol.log. " +
-                 "Relative paths are resolved against persistentDataPath. The previous run is kept as .prev.")]
+        [Tooltip("Log file path for this game's Crowd Control log. Blank = " +
+                 "<persistentDataPath>/CrowdControl/crowdcontrol-unity.log, which on Windows lives under " +
+                 "AppData/LocalLow/<Company>/<Product>. This is NOT the Crowd Control desktop app log in " +
+                 "AppData/Roaming. Relative paths are resolved against persistentDataPath. " +
+                 "The previous run is kept as .prev.")]
         public string LogFilePath = "";
+
+        /// <summary>Gets the absolute path <see cref="LogFilePath"/> resolves to, whether or not the file is open.</summary>
+        /// <remarks>
+        /// This is the path the log would be written to if <see cref="LogToFile"/> were enabled now. It is shown in
+        /// the inspector so that the file can be found without guessing at what
+        /// <see cref="Application.persistentDataPath"/> expands to on this platform.
+        /// </remarks>
+        public string ResolvedLogFilePath => CrowdControlLogFile.ResolvePath(LogFilePath);
+
+        /// <summary>Gets the path currently being written to, or <see langword="null"/> if no log file is open.</summary>
+        public string? ActiveLogFilePath => CrowdControlLogFile.CurrentPath;
 
         /// <summary>No longer used. Ping responses are always reported asynchronously.</summary>
         /// <remarks>
@@ -181,31 +251,83 @@ namespace CrowdControl.Client.Unity
         /// <summary>The number of instances currently subscribed to the Crowd Control log.</summary>
         private static int s_loggingSubscribers;
 
+        /// <summary>Whether any live instance currently permits logging. Mirrors <see cref="LoggingEnabled"/>.</summary>
+        /// <remarks>
+        /// <see cref="OnLogMessage"/> runs off a static event and can be raised by the socket threads long after the
+        /// component that hooked it went away, so the switch it consults has to be static as well. It is refreshed
+        /// from the inspector value whenever that value can change, which lets logging be toggled at runtime.
+        /// </remarks>
+        private static bool s_loggingEnabled = true;
+
+        /// <summary>Pushes this instance's resolved <see cref="Logging"/> setting to the static logging switch.</summary>
+        private void ApplyLoggingSettings()
+        {
+            bool enabled = LoggingEnabled;
+            s_loggingEnabled = enabled;
+            if (CrowdControl != null) CrowdControl.LogSocketTraffic = enabled && LogSocketTraffic;
+
+            //logging turned back on mid-session: the file sink was skipped at startup, so open it now
+            if (enabled && m_loggingHooked && LogToFile && (CrowdControlLogFile.CurrentPath == null))
+            {
+                string path = CrowdControlLogFile.ResolvePath(LogFilePath);
+                if (CrowdControlLogFile.Open(path)) LogInfo($"Crowd Control is logging this game to \"{path}\".");
+            }
+        }
+
+        /// <summary>Unity callback invoked when a value is changed in the inspector. Applies the logging switch immediately.</summary>
+        void OnValidate() => ApplyLoggingSettings();
+
+        /// <summary>Writes an informational message to the Unity console, unless logging is disabled.</summary>
+        /// <param name="message">The message to write.</param>
+        private static void LogInfo(object? message)
+        {
+            if (!s_loggingEnabled) return;
+            Debug.Log(message);
+        }
+
+        /// <summary>Writes a warning to the Unity console, unless logging is disabled.</summary>
+        /// <param name="message">The message to write.</param>
+        private static void LogWarning(object? message)
+        {
+            if (!s_loggingEnabled) return;
+            Debug.LogWarning(message);
+        }
+
+        /// <summary>Writes an error to the Unity console, unless logging is disabled.</summary>
+        /// <param name="message">The message to write.</param>
+        private static void LogError(object? message)
+        {
+            if (!s_loggingEnabled) return;
+            Debug.LogError(message);
+        }
+
         /// <summary>Writes a Crowd Control log message to the Unity console.</summary>
         /// <param name="message">The message to write.</param>
         /// <param name="level">The severity of the message.</param>
         private static void OnLogMessage(string message, LogLevel level)
         {
+            if (!s_loggingEnabled) return;
+
             //queued and written on a background thread; safe to call from the socket threads
             CrowdControlLogFile.Write($"[{level}] {message}");
 
             switch (level)
             {
                 case LogLevel.Warning:
-                    Debug.LogWarning(message);
+                    LogWarning(message);
                     break;
                 case LogLevel.Error:
                 case LogLevel.Exception:
-                    Debug.LogError(message);
+                    LogError(message);
                     break;
                 case LogLevel.Message:
-                    Debug.Log(message);
+                    LogInfo(message);
                     break;
                 case LogLevel.Debug:
-                    Debug.Log($"[Debug] {message}");
+                    LogInfo($"[Debug] {message}");
                     break;
                 case LogLevel.Effect:
-                    Debug.Log($"[Effect] {message}");
+                    LogInfo($"[Effect] {message}");
                     break;
             }
         }
@@ -223,17 +345,18 @@ namespace CrowdControl.Client.Unity
 
             Log.FileOutput = false;
             Log.ConsoleOutput = false;
+            s_loggingEnabled = LoggingEnabled;
 
             if (Interlocked.Increment(ref s_loggingSubscribers) != 1) return;
 
-            if (LogToFile)
+            if (LoggingEnabled && LogToFile)
             {
                 string path = CrowdControlLogFile.ResolvePath(LogFilePath);
                 if (CrowdControlLogFile.Open(path))
-                    Debug.Log($"Crowd Control log file: {path}");
+                    LogInfo($"Crowd Control is logging this game to \"{path}\".");
             }
 
-            Debug.Log("Rerouting Crowd Control logs to Unity console...");
+            LogInfo("Rerouting Crowd Control logs to Unity console...");
             Log.OnMessage += OnLogMessage;
         }
 
@@ -253,6 +376,7 @@ namespace CrowdControl.Client.Unity
         {
             if (PreserveBetweenScenes) DontDestroyOnLoad(gameObject);
 
+            ApplyLoggingSettings();
             HookLogging();
 
             m_synchronizationContext = SynchronizationContext.Current;
@@ -272,14 +396,14 @@ namespace CrowdControl.Client.Unity
         {
             if (!GameStateManager)
             {
-                Debug.LogError("CrowdControlBehavior.GameStateManager is not set! Please set it before enabling the CrowdControl Behavior.");
+                LogError("CrowdControlBehavior.GameStateManager is not set! Please set it before enabling the CrowdControl Behavior.");
                 enabled = false;
                 return;
             }
 
             if (!EffectLoader)
             {
-                Debug.LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before enabling the CrowdControl Behavior.");
+                LogError("CrowdControlBehavior.EffectLoader is not set! Please set it before enabling the CrowdControl Behavior.");
                 enabled = false;
                 return;
             }
@@ -322,7 +446,7 @@ namespace CrowdControl.Client.Unity
         {
             if (!enabled)
             {
-                Debug.LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
+                LogError("CrowdControlBehavior is not enabled! Cannot connect to Crowd Control.");
                 return;
             }
 
@@ -360,7 +484,7 @@ namespace CrowdControl.Client.Unity
             CrowdControl.SessionEnded += OnSessionEnded;
 
             CrowdControl.AutoReconnect = AutoReconnect;
-            CrowdControl.LogSocketTraffic = LogSocketTraffic;
+            CrowdControl.LogSocketTraffic = LoggingEnabled && LogSocketTraffic;
             CrowdControl.Connect();
             RefreshJWT();
         }
@@ -389,13 +513,13 @@ namespace CrowdControl.Client.Unity
         {
             if (CrowdControl == null)
             {
-                Debug.LogError("CrowdControlBehavior is not connected! Cannot launch interact link.");
+                LogError("CrowdControlBehavior is not connected! Cannot launch interact link.");
                 return;
             }
             string? url = CrowdControl.GetInteractLink();
             if (string.IsNullOrEmpty(url))
             {
-                Debug.LogError("Failed to get interact link from Crowd Control.");
+                LogError("Failed to get interact link from Crowd Control.");
                 return;
             }
             Application.OpenURL(url);
@@ -406,7 +530,7 @@ namespace CrowdControl.Client.Unity
         {
             if (CrowdControl == null)
             {
-                Debug.LogError("CrowdControlBehavior is not connected! Cannot get interact link.");
+                LogError("CrowdControlBehavior is not connected! Cannot get interact link.");
                 return null;
             }
             return CrowdControl.GetInteractLink();
@@ -456,7 +580,7 @@ namespace CrowdControl.Client.Unity
 
         private void OnSessionReady()
         {
-            Debug.Log("Crowd Control session is ready.");
+            LogInfo("Crowd Control session is ready.");
             m_synchronizationContext?.Post(_ =>
             {
                 SessionReady.InvokeSafe();
@@ -486,7 +610,7 @@ namespace CrowdControl.Client.Unity
 
         private void OnSessionEnded()
         {
-            Debug.Log("Crowd Control session has ended.");
+            LogInfo("Crowd Control session has ended.");
             m_synchronizationContext?.Post(_ =>
             {
                 SessionEnded.InvokeSafe();
@@ -512,7 +636,7 @@ namespace CrowdControl.Client.Unity
 
         private void OnAuthCodeReceived(ApplicationAuthCode authCode)
         {
-            Debug.Log($"Authentication code received: {authCode.Code}, URL: {authCode.Url}");
+            LogInfo($"Authentication code received: {authCode.Code}, URL: {authCode.Url}");
             m_synchronizationContext?.Post(_ =>
             {
                 AuthCodeReceived.InvokeSafe(authCode);
@@ -537,7 +661,7 @@ namespace CrowdControl.Client.Unity
 
         private void OnAuthCodeRedeemedReceived(ApplicationAuthCodeRedeemed authCodeRedeemed)
         {
-            Debug.Log($"Authentication code redeemed: {authCodeRedeemed.Code}");
+            LogInfo($"Authentication code redeemed: {authCodeRedeemed.Code}");
             m_synchronizationContext?.Post(_ =>
             {
                 AuthCodeRedeemedReceived.InvokeSafe(authCodeRedeemed);
@@ -562,7 +686,7 @@ namespace CrowdControl.Client.Unity
 
         private void OnAuthCodeErrorReceived(ApplicationAuthCodeError authCodeError)
         {
-            Debug.LogError($"Authentication code error received: {authCodeError.Message}");
+            LogError($"Authentication code error received: {authCodeError.Message}");
             m_synchronizationContext?.Post(_ =>
             {
                 AuthCodeErrorReceived.InvokeSafe(authCodeError);
@@ -655,7 +779,7 @@ namespace CrowdControl.Client.Unity
         {
             if (!Connected)
             {
-                Debug.LogError("CrowdControlBehavior is not connected! Cannot ping Crowd Control.");
+                LogError("CrowdControlBehavior is not connected! Cannot ping Crowd Control.");
                 return;
             }
             System.Diagnostics.Debug.Assert(CrowdControl != null);
@@ -667,8 +791,8 @@ namespace CrowdControl.Client.Unity
             {
                 m_synchronizationContext?.Post(_ =>
                 {
-                    if (success) Debug.Log($"Ping response received.");
-                    else Debug.LogError("Ping failed to receive a response.");
+                    if (success) LogInfo($"Ping response received.");
+                    else LogError("Ping failed to receive a response.");
                 }, null);
             }
         }
@@ -808,7 +932,7 @@ namespace CrowdControl.Client.Unity
             List<IEffect> customEffects = effectLoader!.Effects.Values.Where(e => e.IsCustom).ToList();
             if (customEffects.Count == 0)
             {
-                Debug.LogWarning("No custom effects were found to upload. Effects are only uploaded when their Custom Effect flag is set.");
+                LogWarning("No custom effects were found to upload. Effects are only uploaded when their Custom Effect flag is set.");
                 return false;
             }
 
@@ -868,19 +992,19 @@ namespace CrowdControl.Client.Unity
 
             if (crowdControl == null)
             {
-                Debug.LogError($"CrowdControlBehavior is not connected! Cannot {action}.");
+                LogError($"CrowdControlBehavior is not connected! Cannot {action}.");
                 return false;
             }
 
             if (requireEffectLoader && (!effectLoader))
             {
-                Debug.LogError($"CrowdControlBehavior.EffectLoader is not set! Please set it before attempting to {action}.");
+                LogError($"CrowdControlBehavior.EffectLoader is not set! Please set it before attempting to {action}.");
                 return false;
             }
 
             if (!crowdControl.CanWriteCustomEffects)
             {
-                Debug.LogError($"Cannot {action}: the current login does not have the 'custom-effects:write' scope. " +
+                LogError($"Cannot {action}: the current login does not have the 'custom-effects:write' scope. " +
                                "Custom effect uploading is a development tool and needs a developer token issued by Crowd Control. " +
                                "Released games should publish their effects in their game pack menu instead.");
                 return false;
@@ -893,8 +1017,8 @@ namespace CrowdControl.Client.Unity
         private void LogCustomEffectResult(bool success, string successMessage, string failureMessage)
             => m_synchronizationContext?.Post(_ =>
             {
-                if (success) Debug.Log(successMessage);
-                else Debug.LogError(failureMessage);
+                if (success) LogInfo(successMessage);
+                else LogError(failureMessage);
             }, null);
 
         #endregion

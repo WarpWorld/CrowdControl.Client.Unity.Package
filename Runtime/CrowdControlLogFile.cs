@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
@@ -18,7 +18,12 @@ namespace CrowdControl.Client.Unity
     internal static class CrowdControlLogFile
     {
         /// <summary>Default file name used when no path is configured.</summary>
-        private const string DEFAULT_FILE_NAME = "crowdcontrol.log";
+        /// <remarks>
+        /// Deliberately not <c>crowdcontrol.log</c>: that is the name the Crowd Control desktop application writes in
+        /// <c>%AppData%\CrowdControl\logs</c>, and a developer hunting for this file will otherwise find that one and
+        /// wonder why it says nothing about their game.
+        /// </remarks>
+        private const string DEFAULT_FILE_NAME = "crowdcontrol-unity.log";
 
         /// <summary>Default subfolder of <see cref="Application.persistentDataPath"/> used when no path is configured.</summary>
         private const string DEFAULT_FOLDER = "CrowdControl";

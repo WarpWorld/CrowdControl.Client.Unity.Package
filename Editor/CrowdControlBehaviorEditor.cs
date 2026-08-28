@@ -21,6 +21,8 @@ namespace CrowdControl.Client.Unity.Editor
 
             CrowdControlBehavior behavior = (target as CrowdControlBehavior)!;
 
+            DrawLogFileLocation(behavior);
+
             EditorGUILayout.Space();
 
             if (string.IsNullOrWhiteSpace(behavior.GameID))
@@ -67,6 +69,39 @@ namespace CrowdControl.Client.Unity.Editor
                         GenerateMenuJson(behavior, effectLoader);
 
                     DrawCustomEffectTools(behavior, effectLoader);
+                }
+            }
+        }
+
+        /// <summary>Shows where this game's Crowd Control log is written, and offers to open it.</summary>
+        /// <remarks>
+        /// The path is under <c>Application.persistentDataPath</c>, which nothing in the inspector otherwise spells
+        /// out, and its file name is close enough to the Crowd Control desktop application's own log that developers
+        /// have gone looking in <c>%AppData%</c> and found the wrong file. Showing the resolved absolute path here,
+        /// with a button that reveals it, removes the guesswork.
+        /// </remarks>
+        private static void DrawLogFileLocation(CrowdControlBehavior behavior)
+        {
+            if (!behavior.LogToFile) return;
+
+            string path = behavior.ResolvedLogFilePath;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.HelpBox(
+                "This game's Crowd Control log is written to:\n" + path + "\n\n" +
+                "That is inside this game's own data folder. It is not the Crowd Control desktop app's log, which " +
+                "lives in %AppData%\\CrowdControl\\logs.",
+                MessageType.Info);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Copy Log Path"))
+                    EditorGUIUtility.systemCopyBuffer = path;
+
+                using (new EditorGUI.DisabledScope(!File.Exists(path)))
+                {
+                    if (GUILayout.Button("Show Log File"))
+                        EditorUtility.RevealInFinder(path);
                 }
             }
         }
