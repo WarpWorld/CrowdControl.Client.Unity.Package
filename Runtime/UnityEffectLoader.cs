@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.Profiling.Memory.Experimental;
 
 namespace CrowdControl.Client.Unity
 {
