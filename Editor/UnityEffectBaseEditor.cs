@@ -49,13 +49,13 @@ namespace CrowdControl.Client.Unity.Editor
             bool hasQuantity = EditorGUILayout.Toggle("Quantity Effect", maxQuantityProperty.longValue > 1);
             if (hasQuantity)
             {
-                if (maxQuantityProperty.longValue < 1)
-                    maxQuantityProperty.longValue = 1;
+                if (maxQuantityProperty.longValue < 2)
+                    maxQuantityProperty.longValue = 2;
 
                 maxQuantityProperty.longValue = EditorGUILayout.IntSlider(
                     new GUIContent(maxQuantityProperty.displayName, maxQuantityProperty.tooltip),
                     (int)maxQuantityProperty.longValue,
-                    1,
+                    2,
                     10_000);
             }
             else
