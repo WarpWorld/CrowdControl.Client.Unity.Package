@@ -539,6 +539,34 @@ namespace CrowdControl.Client.Unity
         /// <summary>Disconnects from the Crowd Control service and disposes the client instance.</summary>
         public void Disconnect() => Stop();
 
+        #region Game Events
+
+        /// <summary>Reports an event that occurred in the active game session.</summary>
+        /// <param name="eventID">The game pack's ID for the event that occurred.</param>
+        /// <remarks>
+        /// This overload is fire-and-forget so it can be wired directly to a UnityEvent or an inspector button.
+        /// Use <see cref="TriggerEventAsync(string, IReadOnlyDictionary{string, object})"/> when the result or
+        /// event metadata is needed.
+        /// </remarks>
+        public void TriggerEvent(string eventID) => TriggerEventAsync(eventID).Forget();
+
+        /// <summary>Reports an event that occurred in the active game session.</summary>
+        /// <param name="eventID">The game pack's ID for the event that occurred.</param>
+        /// <param name="args">Optional metadata associated with the occurrence.</param>
+        /// <returns>A task that resolves to whether the event was queued for transmission.</returns>
+        public Task<bool> TriggerEventAsync(string eventID, IReadOnlyDictionary<string, object?>? args = null)
+        {
+            if (CrowdControl == null)
+            {
+                LogError("CrowdControlBehavior is not connected! Cannot report a game event.");
+                return Task.FromResult(false);
+            }
+
+            return CrowdControl.TriggerEvent(eventID, args);
+        }
+
+        #endregion
+
         /// <summary>Gets a value indicating whether there is a valid JWT token stored for authentication with the Crowd Control service.</summary>
         public static bool IsStoredTokenValid
             => WebSocket.CrowdControl.IsTokenValid(PlayerPrefs.GetString("CrowdControl_JWT", null));
