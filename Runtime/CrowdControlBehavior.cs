@@ -543,9 +543,16 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>Reports an event that occurred in the active game session.</summary>
         /// <param name="eventID">The game pack's ID for the event that occurred.</param>
-        /// <param name="args">Optional metadata associated with the occurrence.</param>
         /// <remarks>
         /// This overload is fire-and-forget so it can be wired directly to a UnityEvent or an inspector button.
+        /// Use <see cref="TriggerEventAsync(string)"/> when the result is needed.
+        /// </remarks>
+        public void TriggerEvent(string eventID) => TriggerEventAsync(eventID).Forget();
+
+        /// <summary>Reports an event that occurred in the active game session.</summary>
+        /// <param name="eventID">The game pack's ID for the event that occurred.</param>
+        /// <param name="args">Optional metadata associated with the occurrence.</param>
+        /// <remarks>
         /// Use <see cref="TriggerEventAsync(string, IReadOnlyDictionary{string, object})"/> when the result is needed.
         /// </remarks>
         public void TriggerEvent(string eventID, IReadOnlyDictionary<string, object?>? args = null) => TriggerEventAsync(eventID, args).Forget();
