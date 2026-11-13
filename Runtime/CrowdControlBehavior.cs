@@ -61,6 +61,14 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically connect to Crowd Control on start.")]
         public bool AutoConnect = false;
 
+        /// <summary>Whether to automatically open the Crowd Control authentication URL in the user's default browser when a new auth code is received.</summary>
+        [SerializeField]
+        [Tooltip("Whether to automatically open the Crowd Control authentication URL in the user's default browser when a new auth code is received.")]
+        public bool AutoOpenAuthURL = true;
+
+        /// <summary>Whether this instance should auto-open the auth URL for the current event subscription state.</summary>
+        private bool ShouldAutoOpenAuthURL => AutoOpenAuthURL && AuthCodeReceived == null && AuthCodeReceivedEvent == null;
+
         /// <summary>Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.</summary>
         [SerializeField]
         [Tooltip("Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.")]
@@ -674,6 +682,15 @@ namespace CrowdControl.Client.Unity
             LogInfo($"Authentication code received: {authCode.Code}, URL: {authCode.Url}");
             m_synchronizationContext?.Post(_ =>
             {
+                if (ShouldAutoOpenAuthURL && !string.IsNullOrWhiteSpace(authCode.Url))
+                {
+                    try { Application.OpenURL(authCode.Url); }
+                    catch (Exception ex)
+                    {
+                        LogWarning($"Failed to open Crowd Control auth URL automatically: {ex.Message}");
+                    }
+                }
+
                 AuthCodeReceived.InvokeSafe(authCode);
                 AuthCodeReceivedEvent?.Invoke(authCode);
             }, null);
