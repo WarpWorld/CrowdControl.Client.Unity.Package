@@ -2,8 +2,11 @@
 using CrowdControl.Client.WebSocket.Actions;
 using CrowdControl.Client.WebSocket.Data;
 using CrowdControl.Common;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 using System.IO;
+using System.Security;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
@@ -109,34 +112,65 @@ namespace CrowdControl.Client.Unity.Editor
         /// <summary>Writes the effect menu for this scene out as a game pack menu JSON file.</summary>
         private static void GenerateMenuJson(CrowdControlBehavior behavior, UnityEffectLoader effectLoader)
         {
-            ReloadEffects(effectLoader);
-
-            JObject result = new();
-
-            JObject meta = (JObject)(result["meta"] = new JObject());
-            meta["platform"] = "PC";
-            meta["name"] = behavior.DisplayName;
-            meta["connector"] = JArray.FromObject(new[] { "External" });
-            meta["guide"] = "https://crowdcontrol.live/guides/" + behavior.GameID;
-
-            JObject effects = (JObject)(result["effects"] = new JObject());
-            JObject effects_game = (JObject)(effects["game"] = new JObject());
-
-            foreach (UnityEffectBase item in effectLoader.Effects.Values)
+            string stage = "loading effects from the scene";
+            UnityEngine.Object context = effectLoader;
+            try
             {
-                JObject nextItem = item.ToJObject();
-                effects_game[item.EffectID] = nextItem;
+                ReloadEffects(effectLoader);
+
+                stage = "building menu metadata";
+                context = behavior;
+                JObject result = new();
+
+                JObject meta = (JObject)(result["meta"] = new JObject());
+                meta["platform"] = "PC";
+                meta["name"] = behavior.DisplayName;
+                meta["connector"] = JArray.FromObject(new[] { "External" });
+                meta["guide"] = "https://crowdcontrol.live/guides/" + behavior.GameID;
+
+                JObject effects = (JObject)(result["effects"] = new JObject());
+                JObject effects_game = (JObject)(effects["game"] = new JObject());
+
+                foreach (UnityEffectBase item in effectLoader.Effects.Values)
+                {
+                    context = item;
+                    stage = $"serializing effect '{item.EffectID}' ({item.GetType().Name}) on GameObject '{item.name}'";
+                    JObject nextItem = item.ToJObject();
+                    effects_game[item.EffectID] = nextItem;
+                }
+
+                context = behavior;
+                stage = "choosing the output file";
+                string path = EditorUtility.SaveFilePanel(
+                    "Save Menu JSON",
+                    "",
+                    "menu.json",
+                    "json");
+
+                if (string.IsNullOrEmpty(path)) return; //the save panel was cancelled
+
+                stage = "formatting the menu JSON";
+                string json = result.ToString(Formatting.Indented);
+                stage = $"writing menu JSON to '{path}'";
+                File.WriteAllText(path, json);
             }
+            catch (Exception ex) when (ex is ArgumentException
+                || ex is InvalidOperationException
+                || ex is JsonException
+                || ex is IOException
+                || ex is UnauthorizedAccessException
+                || ex is SecurityException
+                || ex is NotSupportedException)
+            {
+                string reason = ex.Message;
+                Exception cause = ex.GetBaseException();
+                if (cause != ex)
+                    reason += "\nCause: " + cause.Message;
 
-            string path = EditorUtility.SaveFilePanel(
-                "Save Menu JSON",
-                "",
-                "menu.json",
-                "json");
-
-            if (string.IsNullOrEmpty(path)) return; //the save panel was cancelled
-
-            File.WriteAllText(path, result.ToString(Newtonsoft.Json.Formatting.Indented));
+                string message = $"Menu JSON generation failed while {stage}.\n\n{reason}";
+                Debug.LogException(new InvalidOperationException(message, ex), context);
+                EditorUtility.DisplayDialog("Menu JSON Generation Failed", message + "\n\nSee the Console for the full exception.", "OK");
+            }
         }
 
         /// <summary>

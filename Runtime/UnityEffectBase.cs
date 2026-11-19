@@ -182,7 +182,15 @@ namespace CrowdControl.Client.Unity
                     ["max"] = MaxQuantity
                 };
 
-            ParameterList? parameters = ((IEffect)this).Parameters;
+            ParameterList? parameters;
+            try
+            {
+                parameters = ((IEffect)this).Parameters;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException($"Effect '{EffectID}' has invalid parameters: {ex.Message}", nameof(Parameters), ex);
+            }
             if (parameters != null)
                 nextItem["parameters"] = JObject.FromObject(parameters);
 

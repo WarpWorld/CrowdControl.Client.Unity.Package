@@ -6,6 +6,7 @@ using CrowdControl.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -66,8 +67,38 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically open the Crowd Control authentication URL in the user's default browser when a new auth code is received.")]
         public bool AutoOpenAuthURL = true;
 
+        private static readonly MethodInfo? PrepareUnityEventInvoke = typeof(UnityEventBase).GetMethod(
+            "PrepareInvoke", BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly MethodInfo? GetUnityEventCallCount = typeof(UnityEventBase).GetMethod(
+            "GetCallsCount", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        /// <summary>Whether a Unity event has persistent or runtime listeners registered.</summary>
+        private static bool HasListeners(UnityEventBase? unityEvent)
+        {
+            if (unityEvent == null) return false;
+
+            try
+            {
+                // Unity exposes the persistent count, but not the count of listeners added with AddListener().
+                // PrepareInvoke rebuilds persistent calls without invoking them, then GetCallsCount includes both.
+                PrepareUnityEventInvoke?.Invoke(unityEvent, null);
+                if (GetUnityEventCallCount?.Invoke(unityEvent, null) is int callCount)
+                    return callCount > 0;
+            }
+            catch (TargetInvocationException)
+            {
+                // Fall back to serialized listeners below if Unity changes this implementation detail.
+            }
+
+            for (int i = 0; i < unityEvent.GetPersistentEventCount(); i++)
+                if (unityEvent.GetPersistentListenerState(i) != UnityEventCallState.Off)
+                    return true;
+
+            return false;
+        }
+
         /// <summary>Whether this instance should auto-open the auth URL for the current event subscription state.</summary>
-        private bool ShouldAutoOpenAuthURL => AutoOpenAuthURL && AuthCodeReceived == null && AuthCodeReceivedEvent == null;
+        private bool ShouldAutoOpenAuthURL => AutoOpenAuthURL && AuthCodeReceived == null && !HasListeners(AuthCodeReceivedEvent);
 
         /// <summary>Whether to automatically reconnect to Crowd Control when the connection is lost while a session is active.</summary>
         [SerializeField]
