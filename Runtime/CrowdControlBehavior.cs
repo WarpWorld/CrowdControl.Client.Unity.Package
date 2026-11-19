@@ -82,8 +82,8 @@ namespace CrowdControl.Client.Unity
                 // Unity exposes the persistent count, but not the count of listeners added with AddListener().
                 // PrepareInvoke rebuilds persistent calls without invoking them, then GetCallsCount includes both.
                 PrepareUnityEventInvoke?.Invoke(unityEvent, null);
-                if (GetUnityEventCallCount?.Invoke(unityEvent, null) is int callCount && callCount > 0)
-                    return true;
+                if (GetUnityEventCallCount?.Invoke(unityEvent, null) is int callCount)
+                    return callCount > 0;
             }
             catch (TargetInvocationException)
             {
