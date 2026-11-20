@@ -69,7 +69,7 @@ namespace CrowdControl.Client.Unity
 
         /// <summary>Gets the version of the Crowd Control client library.</summary>
         /// <remarks>This is the version of the Crowd Control client library, not necessarily the version of this Unity plugin.</remarks>
-        public VersionNumber ClientVersion { get; } = VersionNumber.GetAssemblyVersion(typeof(WebSocket.CrowdControl).Assembly);
+        public static VersionNumber ClientVersion { get; } = VersionNumber.GetAssemblyVersion(typeof(WebSocket.CrowdControl).Assembly);
 
         private static readonly MethodInfo? PrepareUnityEventInvoke = typeof(UnityEventBase).GetMethod(
             "PrepareInvoke", BindingFlags.Instance | BindingFlags.NonPublic);
