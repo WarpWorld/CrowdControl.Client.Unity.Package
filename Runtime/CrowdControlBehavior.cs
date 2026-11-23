@@ -470,6 +470,7 @@ namespace CrowdControl.Client.Unity
             CrowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
             CrowdControl.SessionReady -= OnSessionReady;
             CrowdControl.SessionEnded -= OnSessionEnded;
+            CrowdControl.SessionStartFailed -= OnSessionStartFailed;
 
             try { CrowdControl?.Dispose(); }
             catch { /**/ }
@@ -525,11 +526,22 @@ namespace CrowdControl.Client.Unity
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
+            CrowdControl.SessionStartFailed += OnSessionStartFailed;
 
             CrowdControl.AutoReconnect = AutoReconnect;
             CrowdControl.LogSocketTraffic = LoggingEnabled && LogSocketTraffic;
             CrowdControl.Connect();
             RefreshJWT();
+        }
+
+        private void OnSessionStartFailed(SessionStartFailure failure)
+        {
+            if (failure.Kind != SessionStartFailureKind.GamePackNotFound) return;
+
+            m_synchronizationContext?.Post(_ =>
+            {
+                LogError($"Cannot start Crowd Control: game pack '{failure.GamePackID}' is not configured yet. Upload an effect/menu JSON in the developer portal, then connect again.");
+            }, null);
         }
 
         private void RefreshJWT()
@@ -541,7 +553,10 @@ namespace CrowdControl.Client.Unity
                 Task.Run(async () =>
                 {
                     if (!(await CrowdControl.StartSession(false)))
-                        await CrowdControl.GetAuthCode();
+                    {
+                        if (CrowdControl.LastSessionStartFailure?.Kind != SessionStartFailureKind.GamePackNotFound)
+                            await CrowdControl.GetAuthCode();
+                    }
                 }).Forget();
             }
             else
