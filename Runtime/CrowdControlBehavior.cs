@@ -67,6 +67,10 @@ namespace CrowdControl.Client.Unity
         [Tooltip("Whether to automatically open the Crowd Control authentication URL in the user's default browser when a new auth code is received.")]
         public bool AutoOpenAuthURL = true;
 
+        /// <summary>Gets the version of the Crowd Control client library.</summary>
+        /// <remarks>This is the version of the Crowd Control client library, not necessarily the version of this Unity plugin.</remarks>
+        public static VersionNumber ClientVersion { get; } = VersionNumber.GetAssemblyVersion(typeof(WebSocket.CrowdControl).Assembly);
+
         private static readonly MethodInfo? PrepareUnityEventInvoke = typeof(UnityEventBase).GetMethod(
             "PrepareInvoke", BindingFlags.Instance | BindingFlags.NonPublic);
         private static readonly MethodInfo? GetUnityEventCallCount = typeof(UnityEventBase).GetMethod(
@@ -466,6 +470,7 @@ namespace CrowdControl.Client.Unity
             CrowdControl.AuthCodeErrorReceived -= OnAuthCodeErrorReceived;
             CrowdControl.SessionReady -= OnSessionReady;
             CrowdControl.SessionEnded -= OnSessionEnded;
+            CrowdControl.SessionStartFailed -= OnSessionStartFailed;
 
             try { CrowdControl?.Dispose(); }
             catch { /**/ }
@@ -521,11 +526,22 @@ namespace CrowdControl.Client.Unity
 
             CrowdControl.SessionReady += OnSessionReady;
             CrowdControl.SessionEnded += OnSessionEnded;
+            CrowdControl.SessionStartFailed += OnSessionStartFailed;
 
             CrowdControl.AutoReconnect = AutoReconnect;
             CrowdControl.LogSocketTraffic = LoggingEnabled && LogSocketTraffic;
             CrowdControl.Connect();
             RefreshJWT();
+        }
+
+        private void OnSessionStartFailed(SessionStartFailure failure)
+        {
+            if (failure.Kind != SessionStartFailureKind.GamePackNotFound) return;
+
+            m_synchronizationContext?.Post(_ =>
+            {
+                LogError($"Cannot start Crowd Control: game pack '{failure.GamePackID}' is not configured yet. Upload an effect/menu JSON in the developer portal, then connect again.");
+            }, null);
         }
 
         private void RefreshJWT()
@@ -537,7 +553,10 @@ namespace CrowdControl.Client.Unity
                 Task.Run(async () =>
                 {
                     if (!(await CrowdControl.StartSession(false)))
-                        await CrowdControl.GetAuthCode();
+                    {
+                        if (CrowdControl.LastSessionStartFailure?.Kind != SessionStartFailureKind.GamePackNotFound)
+                            await CrowdControl.GetAuthCode();
+                    }
                 }).Forget();
             }
             else

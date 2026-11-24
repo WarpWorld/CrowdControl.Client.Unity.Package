@@ -120,7 +120,11 @@ namespace CrowdControl.Client.Unity.Editor
 
                 stage = "building menu metadata";
                 context = behavior;
-                JObject result = new();
+                JObject result = new()
+                {
+                    ["kind"] = "built-in",
+                    ["format"] = 1
+                };
 
                 JObject meta = (JObject)(result["meta"] = new JObject());
                 meta["platform"] = "PC";
