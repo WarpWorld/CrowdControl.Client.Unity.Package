@@ -122,7 +122,8 @@ namespace CrowdControl.Client.Unity.Editor
                 context = behavior;
                 JObject result = new()
                 {
-                    ["kind"] = "built-in"
+                    ["kind"] = "built-in",
+                    ["format"] = 1
                 };
 
                 JObject meta = (JObject)(result["meta"] = new JObject());
